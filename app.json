@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Life's Castle",
+    "slug": "lifes-castle",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "lifescastle",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1410"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lifescastle.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1410"
+      },
+      "package": "com.lifescastle.app",
+      "versionCode": 1
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-asset",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
