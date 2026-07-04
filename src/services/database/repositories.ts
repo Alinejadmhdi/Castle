@@ -1,5 +1,6 @@
 import type { Category, CategoryType, UserSettings, FocusMode, AmbientSound } from '@/types';
 import { getDatabase } from './db';
+import { withDbWrite } from './dbQueue';
 import { generateId, normalizeColor } from '@/utils';
 
 interface CategoryRow {
@@ -58,38 +59,40 @@ export async function createCategory(input: {
   type: CategoryType;
   icon?: string;
 }): Promise<Category> {
-  const db = await getDatabase();
-  const count = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM categories');
-  const category: Category = {
-    id: generateId(),
-    name: input.name.trim(),
-    defaultColor: normalizeColor(input.defaultColor),
-    icon: input.icon ?? (input.type === 'miniature' ? 'seedling' : 'castle'),
-    type: input.type,
-    sortOrder: count?.c ?? 0,
-    isHidden: false,
-    totalBrickValue: 0,
-    currentStageIndex: 0,
-    currentStreak: 0,
-    longestStreak: 0,
-    lastBrickDate: null,
-    createdAt: new Date().toISOString(),
-  };
-  await db.runAsync(
-    `INSERT INTO categories (id, name, default_color, icon, type, sort_order, is_hidden,
+  return withDbWrite(async () => {
+    const db = await getDatabase();
+    const count = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM categories');
+    const category: Category = {
+      id: generateId(),
+      name: input.name.trim(),
+      defaultColor: normalizeColor(input.defaultColor),
+      icon: input.icon ?? (input.type === 'miniature' ? 'seedling' : 'castle'),
+      type: input.type,
+      sortOrder: count?.c ?? 0,
+      isHidden: false,
+      totalBrickValue: 0,
+      currentStageIndex: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastBrickDate: null,
+      createdAt: new Date().toISOString(),
+    };
+    await db.runAsync(
+      `INSERT INTO categories (id, name, default_color, icon, type, sort_order, is_hidden,
       total_brick_value, current_stage_index, current_streak, longest_streak, last_brick_date, created_at)
      VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, NULL, ?)`,
-    [
-      category.id,
-      category.name,
-      category.defaultColor,
-      category.icon,
-      category.type,
-      category.sortOrder,
-      category.createdAt,
-    ],
-  );
-  return category;
+      [
+        category.id,
+        category.name,
+        category.defaultColor,
+        category.icon,
+        category.type,
+        category.sortOrder,
+        category.createdAt,
+      ],
+    );
+    return category;
+  });
 }
 
 export async function updateCategory(category: Category): Promise<void> {
@@ -113,6 +116,38 @@ export async function updateCategory(category: Category): Promise<void> {
       category.id,
     ],
   );
+}
+
+/** Atomically add brick value — safe under rapid taps. */
+export async function incrementCategoryAfterBrick(
+  categoryId: string,
+  brickDelta: number,
+  fields: {
+    currentStageIndex: number;
+    currentStreak: number;
+    longestStreak: number;
+    lastBrickDate: string;
+  },
+): Promise<number> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE categories SET total_brick_value = total_brick_value + ?,
+      current_stage_index = ?, current_streak = ?, longest_streak = ?, last_brick_date = ?
+     WHERE id = ?`,
+    [
+      brickDelta,
+      fields.currentStageIndex,
+      fields.currentStreak,
+      fields.longestStreak,
+      fields.lastBrickDate,
+      categoryId,
+    ],
+  );
+  const row = await db.getFirstAsync<{ total_brick_value: number }>(
+    'SELECT total_brick_value FROM categories WHERE id = ?',
+    [categoryId],
+  );
+  return row?.total_brick_value ?? 0;
 }
 
 export async function deleteCategory(id: string): Promise<void> {

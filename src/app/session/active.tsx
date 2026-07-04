@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, AppState, type AppStateStatus } from 'react-native';
+import { useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTimerStore } from '@/store/timerStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useFocusSessionAppState } from '@/hooks/useFocusSessionAppState';
 import { startAmbient, stopAmbient } from '@/services/audio/audioService';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -20,7 +21,8 @@ export default function ActiveSessionScreen() {
   const router = useRouter();
   const { session, remainingMs, pause, resume, abandon, lastResult } = useTimerStore();
   const { settings } = useSettingsStore();
-  const appState = useRef(AppState.currentState);
+
+  useFocusSessionAppState(() => router.replace('/'));
 
   useEffect(() => {
     if (lastResult) {
@@ -33,28 +35,6 @@ export default function ActiveSessionScreen() {
       router.replace('/');
     }
   }, [session, lastResult, router]);
-
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      if (!session || session.status !== 'active') return;
-
-      if (appState.current === 'active' && next.match(/inactive|background/)) {
-        if (settings.focusMode === 'strict') {
-          void abandon();
-          router.replace('/');
-          return;
-        }
-        if (settings.focusMode === 'soft' && session.pauseCount >= 1) {
-          void abandon();
-          router.replace('/');
-          return;
-        }
-        pause();
-      }
-      appState.current = next;
-    });
-    return () => sub.remove();
-  }, [session, settings.focusMode, pause, abandon, router]);
 
   useEffect(() => {
     if (!session) return;

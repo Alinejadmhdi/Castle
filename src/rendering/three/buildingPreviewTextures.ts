@@ -34,7 +34,7 @@ export function getPreviewSheetSlice(
   stageIndex: number,
   categoryType: CategoryType,
 ): PreviewSheetSlice {
-  const idx = categoryType === 'miniature' ? Math.min(stageIndex, 7) : stageIndex;
+  const idx = stageIndex;
 
   if (idx <= 6) return { sheetIndex: 0, localIndex: idx, cols: 7 };
   if (idx <= 13) return { sheetIndex: 1, localIndex: idx - 7, cols: 7 };

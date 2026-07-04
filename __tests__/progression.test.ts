@@ -79,13 +79,14 @@ describe('streaks', () => {
 });
 
 describe('miniature stages', () => {
-  it('uses miniature ladder', () => {
-    expect(getStageForBrickValue(7, 'miniature').key).toBe('tiny_wall');
+  it('uses the same ladder as focus categories', () => {
+    expect(getStageForBrickValue(4, 'miniature').key).toBe('foundation');
+    expect(getStageForBrickValue(4, 'standard').key).toBe('foundation');
   });
 
-  it('detects miniature stage unlock at birdhouse threshold', () => {
-    const unlocked = isNewStageUnlocked(17, 18, 'miniature');
-    expect(unlocked?.key).toBe('birdhouse');
+  it('detects miniature stage unlock at hut threshold', () => {
+    const unlocked = isNewStageUnlocked(269, 270, 'miniature');
+    expect(unlocked?.key).toBe('hut');
   });
 });
 

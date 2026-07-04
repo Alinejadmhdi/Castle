@@ -7,12 +7,21 @@ import {
   checkMacroStageUnlock,
   computeGridPosition,
   getStageForBrickValue,
+  getStagesForCategoryType,
 } from '@/features/progression/progressionService';
 import { updateStreak } from '@/features/streaks/streakService';
 import type { Brick, BuildingInstance, Category, FocusSession, UnlockEvent } from '@/types';
 import { generateId, msToBrickValue, todayLocalDate } from '@/utils';
+import { withCategoryLock } from '@/utils/categoryLock';
 import { getAllCategories } from '@/services/database/repositories';
-import { insertBrick, getBrickCount, getBrickCountForStage, getBricksByCategory, assignBricksToBuilding } from '@/services/database/brickRepository';
+import {
+  insertBrick,
+  getBrickCount,
+  getBrickCountForStage,
+  getBricksByCategory,
+  assignBricksToBuilding,
+} from '@/services/database/brickRepository';
+import { withDbWrite } from '@/services/database/dbQueue';
 import {
   getOrCreateDailyBuild,
   insertBuildingInstance,
@@ -21,8 +30,12 @@ import {
   updateDailyBuild,
 } from '@/services/database/buildingRepository';
 import { getMonumentPlotSlot } from '@/rendering/three/settlementLayout';
-import { shouldPersistStageMonument } from '@/constants/monumentPersistence';
-import { getCategoryById, updateCategory } from '@/services/database/repositories';
+import {
+  CENTER_WALL_ABSORBER_KEY,
+  shouldPersistStageMonument,
+} from '@/constants/monumentPersistence';
+import { getCategoryById, incrementCategoryAfterBrick } from '@/services/database/repositories';
+import { waitForCategory, withDbRetry } from '@/services/database/categoryReadiness';
 
 export interface BrickCreationResult {
   bricks: Brick[];
@@ -43,7 +56,11 @@ async function createMacroBuildingInstance(
   fixedSlot?: { plotX: number; plotY: number },
 ): Promise<BuildingInstance> {
   const existing = await getBuildingsByCategory(category.id);
-  const plotMonuments = existing.filter((b) => b.kind === 'macro' || b.kind === 'miniature');
+  const plotMonuments = existing.filter(
+    (b) =>
+      (b.kind === 'macro' || b.kind === 'miniature') &&
+      b.stageKey !== CENTER_WALL_ABSORBER_KEY,
+  );
   const isMiniature = category.type === 'miniature';
   const stages = isMiniature ? MINIATURE_BUILDING_STAGES : MACRO_BUILDING_STAGES;
   const stageIndex = stages.find((s) => s.key === stageKey)?.index ?? 0;
@@ -74,6 +91,64 @@ async function createMacroBuildingInstance(
   };
   await insertBuildingInstance(building);
   return building;
+}
+
+async function getOrCreateCenterAbsorber(category: Category): Promise<BuildingInstance> {
+  const existing = await getBuildingsByCategory(category.id);
+  const found = existing.find((b) => b.stageKey === CENTER_WALL_ABSORBER_KEY);
+  if (found) return found;
+
+  const building: BuildingInstance = {
+    id: generateId(),
+    categoryId: category.id,
+    kind: 'sub',
+    stageKey: CENTER_WALL_ABSORBER_KEY,
+    name: 'Settlement Core',
+    brickIds: [],
+    totalBrickValue: 0,
+    plotX: 0,
+    plotY: 0,
+    scale: 0,
+    unlockedAt: new Date().toISOString(),
+    parentCompoundId: null,
+    sourceInstanceIds: [],
+  };
+  await insertBuildingInstance(building);
+  return building;
+}
+
+async function absorbCompletedStageWallBricks(
+  categoryId: string,
+  category: Category,
+  completedStageIndex: number,
+): Promise<void> {
+  const categoryBricks = await getBricksByCategory(categoryId);
+  const toAbsorb = categoryBricks.filter(
+    (b) => b.stageIndex === completedStageIndex && b.buildingInstanceId == null,
+  );
+  if (toAbsorb.length === 0) return;
+  const center = await getOrCreateCenterAbsorber(category);
+  await assignBricksToBuilding(
+    toAbsorb.map((b) => b.id),
+    center.id,
+  );
+}
+
+/** Repairs saves where old wall bricks were never absorbed after a stage upgrade. */
+export async function reconcileWallBrickAbsorption(categoryId: string): Promise<void> {
+  const category = await getCategoryById(categoryId);
+  if (!category) return;
+  const bricks = await getBricksByCategory(categoryId);
+  const currentStage = getStageForBrickValue(category.totalBrickValue, category.type);
+  const stale = bricks.filter(
+    (b) => b.buildingInstanceId == null && b.stageIndex < currentStage.index,
+  );
+  if (stale.length === 0) return;
+  const center = await getOrCreateCenterAbsorber(category);
+  await assignBricksToBuilding(
+    stale.map((b) => b.id),
+    center.id,
+  );
 }
 
 async function checkCompoundUnlock(
@@ -151,6 +226,29 @@ export async function addBrickToCategory(
   sessionId: string | null,
   isMiniature: boolean,
 ): Promise<BrickCreationResult> {
+  return withCategoryLock(categoryId, () =>
+    withDbWrite(async () => {
+      const result = await addBrickToCategoryLocked(
+        categoryId,
+        color,
+        brickValue,
+        sessionId,
+        isMiniature,
+      );
+      await reconcileWallBrickAbsorption(categoryId);
+      const refreshed = await getCategoryById(categoryId);
+      return { ...result, category: refreshed ?? result.category };
+    }),
+  );
+}
+
+async function addBrickToCategoryLocked(
+  categoryId: string,
+  color: string,
+  brickValue: number,
+  sessionId: string | null,
+  isMiniature: boolean,
+): Promise<BrickCreationResult> {
   const category = await getCategoryById(categoryId);
   if (!category) throw new Error('Category not found');
 
@@ -166,10 +264,15 @@ export async function addBrickToCategory(
     today,
   );
 
+  const unlockedStage = checkMacroStageUnlock(previousValue, newValue, category.type);
   const stageInfo = allocateBrickToStage(newValue, category.type);
+  const stageForBrick = unlockedStage ?? stageInfo.stage;
+  const stages = getStagesForCategoryType(category.type);
+  const prevStageForBrick = stages[stageForBrick.index - 1];
+  const positionInStage = newValue - (prevStageForBrick?.cumulativeBricks ?? 0);
+  const stageStackIndex = await getBrickCountForStage(categoryId, stageForBrick.index);
+  const grid = computeGridPosition(stageStackIndex);
   const count = await getBrickCount(categoryId);
-  const stageBrickCount = await getBrickCountForStage(categoryId, stageInfo.stage.index);
-  const grid = computeGridPosition(stageBrickCount + 1);
 
   let dailyBuildId: string | null = null;
   if (!isMiniature && category.type === 'standard') {
@@ -186,8 +289,8 @@ export async function addBrickToCategory(
     sessionId,
     fractionalValue: brickValue,
     globalIndex: count + 1,
-    stageIndex: stageInfo.stage.index,
-    positionInStage: stageInfo.positionInStage,
+    stageIndex: stageForBrick.index,
+    positionInStage,
     dailyBuildId,
     buildingInstanceId: null,
     gridX: grid.gridX,
@@ -199,14 +302,17 @@ export async function addBrickToCategory(
 
   await insertBrick(brick);
 
-  category.totalBrickValue = newValue;
-  category.currentStageIndex = stageInfo.stage.index;
+  category.totalBrickValue = await incrementCategoryAfterBrick(categoryId, brickValue, {
+    currentStageIndex: stageForBrick.index,
+    currentStreak: streakResult.currentStreak,
+    longestStreak: streakResult.longestStreak,
+    lastBrickDate: streakResult.lastBrickDate,
+  });
+  category.currentStageIndex = stageForBrick.index;
   category.currentStreak = streakResult.currentStreak;
   category.longestStreak = streakResult.longestStreak;
   category.lastBrickDate = streakResult.lastBrickDate;
-  await updateCategory(category);
 
-  const unlockedStage = checkMacroStageUnlock(previousValue, newValue, category.type);
   if (unlockedStage) {
     const stage = unlockedStage;
     const completedStageIndex = unlockedStage.index - 1;
@@ -222,7 +328,10 @@ export async function addBrickToCategory(
         const absorbedBricks =
           completedStageIndex >= 0
             ? categoryBricks.filter(
-                (b) => b.stageIndex === completedStageIndex && b.buildingInstanceId == null,
+                (b) =>
+                  b.id !== brick.id &&
+                  b.stageIndex === completedStageIndex &&
+                  b.buildingInstanceId == null,
               )
             : [];
         const absorbedIds = absorbedBricks.map((b) => b.id);
@@ -232,7 +341,7 @@ export async function addBrickToCategory(
           stage.key,
           stage.name,
           monumentKind,
-          absorbedIds.length > 0 ? absorbedIds : [brick.id],
+          absorbedIds,
           stage.cumulativeBricks,
           0,
           category.type === 'miniature' ? MINIATURE_SCALE : 1,
@@ -250,6 +359,9 @@ export async function addBrickToCategory(
           categoryBrickTotal: newValue,
         });
       } else {
+        if (completedStageIndex >= 0) {
+          await absorbCompletedStageWallBricks(categoryId, category, completedStageIndex);
+        }
         unlocks.push({
           type: category.type === 'miniature' ? 'miniature' : 'macro',
           stageKey: stage.key,
@@ -259,6 +371,9 @@ export async function addBrickToCategory(
         });
       }
     } else {
+      if (completedStageIndex >= 0) {
+        await absorbCompletedStageWallBricks(categoryId, category, completedStageIndex);
+      }
       unlocks.push({
         type: category.type === 'miniature' ? 'miniature' : 'macro',
         stageKey: stage.key,
@@ -286,7 +401,49 @@ export async function addBrickToCategory(
     }
   }
 
-  return { bricks: [brick], unlocks, category };
+  const refreshed = await getCategoryById(categoryId);
+  return { bricks: [brick], unlocks, category: refreshed ?? category };
+}
+
+async function addMiniatureResistBatchLocked(
+  categoryId: string,
+  count: number,
+): Promise<BrickCreationResult> {
+  const category = await getCategoryById(categoryId);
+  if (!category || category.type !== 'miniature') {
+    throw new Error('Not a miniature category');
+  }
+
+  const allBricks: Brick[] = [];
+  const allUnlocks: UnlockEvent[] = [];
+  let latest = category;
+
+  for (let i = 0; i < count; i++) {
+    const result = await addBrickToCategoryLocked(
+      categoryId,
+      category.defaultColor,
+      1,
+      null,
+      true,
+    );
+    allBricks.push(...result.bricks);
+    allUnlocks.push(...result.unlocks);
+    latest = result.category;
+  }
+
+  await reconcileWallBrickAbsorption(categoryId);
+  const refreshed = await getCategoryById(categoryId);
+  return { bricks: allBricks, unlocks: allUnlocks, category: refreshed ?? latest };
+}
+
+export async function flushMiniatureResistBatch(
+  categoryId: string,
+  count: number,
+): Promise<BrickCreationResult> {
+  if (count <= 0) throw new Error('Invalid batch size');
+  return withCategoryLock(categoryId, () =>
+    withDbWrite(() => addMiniatureResistBatchLocked(categoryId, count)),
+  );
 }
 
 export async function completeSessionBricks(
@@ -300,11 +457,22 @@ export async function completeSessionBricks(
 }
 
 export async function logMiniatureResist(categoryId: string): Promise<BrickCreationResult> {
-  const category = await getCategoryById(categoryId);
-  if (!category || category.type !== 'miniature') {
-    throw new Error('Not a miniature category');
+  const category = await getCategoryById(categoryId).then(
+    (row) => row ?? waitForCategory(categoryId),
+  );
+  if (category.type !== 'miniature') {
+    throw new Error(
+      `Not a miniature category (type=${category.type}). Create as "Miniature (temptation)" to use Log Resist.`,
+    );
   }
   return addBrickToCategory(categoryId, category.defaultColor, 1, null, true);
+}
+
+export async function logMiniatureResistWithRetry(
+  categoryId: string,
+  maxAttempts = 8,
+): Promise<BrickCreationResult> {
+  return withDbRetry(() => logMiniatureResist(categoryId), maxAttempts);
 }
 
 export async function sealDailyBuild(categoryId: string, date: string): Promise<UnlockEvent | null> {

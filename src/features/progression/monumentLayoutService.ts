@@ -1,13 +1,15 @@
 import type { BuildingInstance, CategoryType } from '@/types';
-import { shouldDisplayPlotMonument } from '@/constants/monumentPersistence';
+import { CENTER_WALL_ABSORBER_KEY, shouldDisplayPlotMonument } from '@/constants/monumentPersistence';
 import { reconcileMonumentLayout } from '@/rendering/three/settlementLayout';
 import {
   deleteBuildingInstance,
   getBuildingsByCategory,
   updateBuildingPlotPosition,
 } from '@/services/database/buildingRepository';
+import { withDbWrite } from '@/services/database/dbQueue';
 
 function isPlotMonument(building: BuildingInstance): boolean {
+  if (building.stageKey === CENTER_WALL_ABSORBER_KEY) return false;
   return building.kind === 'macro' || building.kind === 'miniature';
 }
 
@@ -23,30 +25,32 @@ export async function relayoutCategoryMonuments(
 
   if (monuments.length === 0) return buildings;
 
-  const sorted = [...monuments].sort((a, b) => a.unlockedAt.localeCompare(b.unlockedAt));
-  const keepByStage = new Map<string, BuildingInstance>();
-  for (const monument of sorted) {
-    keepByStage.set(monument.stageKey, monument);
-  }
-  const kept = [...keepByStage.values()];
+  return withDbWrite(async () => {
+    const sorted = [...monuments].sort((a, b) => a.unlockedAt.localeCompare(b.unlockedAt));
+    const keepByStage = new Map<string, BuildingInstance>();
+    for (const monument of sorted) {
+      keepByStage.set(monument.stageKey, monument);
+    }
+    const kept = [...keepByStage.values()];
 
-  await Promise.all(
-    monuments
-      .filter((b) => !kept.some((k) => k.id === b.id))
-      .map((b) => deleteBuildingInstance(b.id)),
-  );
+    await Promise.all(
+      monuments
+        .filter((b) => !kept.some((k) => k.id === b.id))
+        .map((b) => deleteBuildingInstance(b.id)),
+    );
 
-  const layout = reconcileMonumentLayout(kept);
-  await Promise.all(
-    kept.map(async (building) => {
-      const slot = layout.get(building.id);
-      if (!slot) return;
-      if (slot.plotX === building.plotX && slot.plotY === building.plotY) return;
-      await updateBuildingPlotPosition(building.id, slot.plotX, slot.plotY);
-      building.plotX = slot.plotX;
-      building.plotY = slot.plotY;
-    }),
-  );
+    const layout = reconcileMonumentLayout(kept);
+    await Promise.all(
+      kept.map(async (building) => {
+        const slot = layout.get(building.id);
+        if (!slot) return;
+        if (slot.plotX === building.plotX && slot.plotY === building.plotY) return;
+        await updateBuildingPlotPosition(building.id, slot.plotX, slot.plotY);
+        building.plotX = slot.plotX;
+        building.plotY = slot.plotY;
+      }),
+    );
 
-  return getBuildingsByCategory(categoryId);
+    return getBuildingsByCategory(categoryId);
+  });
 }

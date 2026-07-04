@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Life's Castle",
+    "name": "Castle",
     "slug": "lifes-castle",
-    "version": "0.1.0",
+    "version": "0.1.21",
     "orientation": "portrait",
     "scheme": "lifescastle",
     "userInterfaceStyle": "dark",
@@ -23,7 +23,16 @@
         "backgroundColor": "#1a1410"
       },
       "package": "com.lifescastle.app",
-      "versionCode": 1
+      "label": "Castle",
+      "versionCode": 9,
+      "permissions": ["VIBRATE"],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -33,6 +42,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dcaeec86-2f8a-4616-a965-c1ec4d505dd4"
+      }
+    },
+    "owner": "alinejadmhdi"
   }
 }

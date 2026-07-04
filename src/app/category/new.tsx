@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useState, useCallback, useRef } from 'react';
+import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCategoryStore } from '@/store/categoryStore';
 import type { CategoryType } from '@/types';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
+import { formatErrorForUser } from '@/utils/formatError';
 
 import { BRICK_DISPLAY_COLOR } from '@/rendering/three/constants';
 
@@ -17,17 +19,45 @@ export default function NewCategoryScreen() {
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [type, setType] = useState<CategoryType>('standard');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setName('');
+      setColor(PRESET_COLORS[0]);
+      setType('standard');
+      if (!savingRef.current) {
+        setSaving(false);
+      }
+    }, []),
+  );
 
   async function handleCreate() {
-    if (!name.trim()) return;
+    if (!name.trim() || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
-    const cat = await add({ name: name.trim(), defaultColor: color, type });
-    setSaving(false);
-    router.replace(`/category/${cat.id}`);
+    try {
+      await add({ name: name.trim(), defaultColor: color, type });
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
+    } catch (error) {
+      const detail = formatErrorForUser(error);
+      console.error('[CreateCategory]', detail, error);
+      Alert.alert('Could not create category', detail);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.label}>Category name</Text>
       <TextInput
         style={styles.input}
@@ -67,7 +97,12 @@ export default function NewCategoryScreen() {
         ))}
       </View>
 
-      <Button title={saving ? 'Creating...' : 'Create Category'} onPress={handleCreate} disabled={saving || !name.trim()} />
+      <Button
+        title={saving ? 'Creating...' : 'Create Category'}
+        onPress={() => void handleCreate()}
+        disabled={saving || !name.trim()}
+        style={styles.submitBtn}
+      />
     </ScrollView>
   );
 }
@@ -97,4 +132,5 @@ const styles = StyleSheet.create({
   colors: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   colorSwatch: { width: 36, height: 36, borderRadius: 18 },
   colorSelected: { borderWidth: 3, borderColor: theme.colors.primary },
+  submitBtn: { marginTop: theme.spacing.lg },
 });

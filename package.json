@@ -1,6 +1,6 @@
 {
   "name": "lifes-castle",
-  "version": "0.1.0",
+  "version": "0.1.21",
   "description": "Life's Castle — focus timer that builds brick walls and castles",
   "main": "expo-router/entry",
   "scripts": {
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "prebuild:android": "expo prebuild --platform android --clean",
     "build:apk": "eas build --platform android --profile preview --non-interactive",
-    "build:apk:local": "eas build --platform android --profile preview --local"
+    "build:apk:local": "eas build --platform android --profile preview --local",
+    "build:apk:gradle": "bash scripts/build-apk-local.sh"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -24,7 +25,6 @@
     "@types/three": "^0.185.0",
     "expo": "~54.0.0",
     "expo-asset": "~12.0.13",
-    "expo-av": "~16.0.8",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.9",
     "expo-file-system": "~19.0.23",

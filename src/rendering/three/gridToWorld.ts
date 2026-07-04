@@ -6,6 +6,8 @@ import {
   GROUND_DEPTH_FACTOR,
   GROUND_WIDTH_FACTOR,
   GRID_COLUMNS,
+  SOIL_GRID_COLUMNS,
+  SOIL_PAD_FRACTION,
 } from './constants';
 
 export interface WorldPosition {
@@ -23,11 +25,15 @@ export function getGroundDimensions(plotScale = 1) {
   };
 }
 
+export function getSoilDimensions(plotScale = 1) {
+  const { width: groundW } = getGroundDimensions(plotScale);
+  const side = groundW * SOIL_PAD_FRACTION;
+  return { side, half: side / 2 };
+}
+
 /**
- * Maps grid to 3D world coords.
- * - gridY=0 is the bottom course; bricks stack upward.
- * - gridX=0 starts at the left edge of the ground (fills left → right).
- * - Wall sits along the near edge of the plot (bottom of the map view).
+ * Maps grid to 3D on the back-left corner of the soil pad.
+ * gridX runs along the back border; gridY stacks courses upward.
  */
 export function gridToWorldPosition(
   gridX: number,
@@ -44,19 +50,17 @@ export function gridToWorldPosition(
   const cellW = w + gap;
   const brickW = w * frac;
 
-  const { width: groundW, depth: groundD } = getGroundDimensions(plotScale);
-  const inset = gap;
-
-  const wallLeft = -groundW / 2 + inset;
-  const x = wallLeft + gridX * cellW + brickW / 2;
-  const y = gridY * (h + gap) + h / 2;
-  const z = -groundD / 2 + inset + d / 2;
+  const { half } = getSoilDimensions(plotScale);
+  const originX = -half + gap + brickW / 2;
+  const x = originX + gridX * cellW;
+  const z = -half + gap + d / 2;
+  const y = 0.04 + gridY * (h + gap) + h / 2;
 
   return { x, y, z, scaleX: frac };
 }
 
 export function getWallHeightCourses(brickCount: number): number {
-  return Math.max(1, Math.ceil(brickCount / GRID_COLUMNS));
+  return Math.max(1, Math.ceil(brickCount / SOIL_GRID_COLUMNS));
 }
 
 export { BRICK_WIDTH, BRICK_HEIGHT, BRICK_DEPTH };

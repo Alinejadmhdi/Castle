@@ -5,6 +5,7 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useTimerStore } from '@/store/timerStore';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
+import { showFocusPrimerIfNeeded } from '@/utils/focusPrimer';
 
 const DURATIONS = [
   { label: '25 min', ms: 25 * 60 * 1000 },
@@ -28,10 +29,13 @@ export default function NewSessionScreen() {
   const [color, setColor] = useState(COLORS[0]);
   const [durationMs, setDurationMs] = useState(DURATIONS[1].ms);
 
-  async function handleStart() {
+  function handleStart() {
     if (!categoryId) return;
-    await start({ categoryId, brickColor: color, plannedDurationMs: durationMs });
-    router.replace('/session/active');
+    showFocusPrimerIfNeeded(() => {
+      void start({ categoryId, brickColor: color, plannedDurationMs: durationMs }).then(() => {
+        router.replace('/session/active');
+      });
+    });
   }
 
   if (standardCats.length === 0) {

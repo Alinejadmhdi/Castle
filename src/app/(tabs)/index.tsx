@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useCategoryStore } from '@/store/categoryStore';
@@ -10,24 +10,29 @@ import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
 import { MapActionPanel, type MapPanelMode, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { ConfettiOverlay } from '@/components/celebration/ConfettiOverlay';
 import { UnlockCelebration } from '@/components/celebration/UnlockCelebration';
 import { useCelebrationStore } from '@/store/celebrationStore';
 import { MINIATURE_SCALE } from '@/constants/miniatureBuildings';
+import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
+import { confirmAction } from '@/utils/confirm';
 
 export default function LifeMapScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
-  const { categories, loading, load } = useCategoryStore();
+  const { categories, loading, remove } = useCategoryStore();
   const { session, lastResult } = useTimerStore();
   const scenes = useMapSceneStore((s) => s.scenes);
   const loadAll = useMapSceneStore((s) => s.loadAll);
+  const loadCategory = useMapSceneStore((s) => s.loadCategory);
   const applyUpdate = useMapSceneStore((s) => s.applyUpdate);
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
   const { active, unlocks, dismiss } = useCelebrationStore();
   const [panel, setPanel] = useState<{ categoryId: string; mode: MapPanelMode } | null>(null);
 
-  const categoryIds = useMemo(() => categories.map((c) => c.id), [categories]);
+  const categoryIdsKey = useMemo(
+    () => categories.map((c) => c.id).join(','),
+    [categories],
+  );
 
   const refreshCategoryScene = useCallback(
     async (categoryId: string, update?: SceneBrickUpdate) => {
@@ -40,21 +45,25 @@ export default function LifeMapScreen() {
     [applyUpdate, refreshCategory],
   );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   useFocusEffect(
     useCallback(() => {
-      if (categoryIds.length === 0) return;
-      void (async () => {
-        await loadAll(categoryIds);
-        for (const cat of categories) {
-          await refreshCategory(cat.id);
-        }
-      })();
-    }, [categories, categoryIds, loadAll, refreshCategory]),
+      const ids = categoryIdsKey ? categoryIdsKey.split(',') : [];
+      if (ids.length === 0) return;
+      void loadAll(ids);
+      const timer = useTimerStore.getState();
+      timer.ensureTicking();
+      void timer.syncFromClock();
+    }, [categoryIdsKey, loadAll]),
   );
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const timer = useTimerStore.getState();
+    if (timer.session?.status === 'active') {
+      timer.ensureTicking();
+      void timer.syncFromClock();
+    }
+  }, [isFocused, session?.status]);
 
   const panelCategory = useMemo(() => {
     if (session) {
@@ -77,17 +86,43 @@ export default function LifeMapScreen() {
   const activePlotCategoryId = session?.categoryId ?? null;
 
   function openFocus(categoryId: string) {
-    if (session && session.categoryId !== categoryId) return;
+    const timer = useTimerStore.getState();
+    const { session } = timer;
+    if (session?.status === 'active' && session.categoryId !== categoryId) return;
+    if (session?.status === 'paused' && session.categoryId !== categoryId) {
+      void timer.abandon();
+    }
+    timer.clearResult();
     setPanel({ categoryId, mode: 'focus-setup' });
   }
 
   function openResist(categoryId: string) {
+    useMapSceneStore.getState().seedEmptyScene(categoryId);
     setPanel({ categoryId, mode: 'resist' });
+    void loadCategory(categoryId);
+  }
+
+  function confirmDeleteCategory(id: string, name: string) {
+    confirmAction(
+      'Delete category',
+      `Remove "${name}" and all its bricks?`,
+      'Delete',
+      async () => {
+        if (panel?.categoryId === id) dismissPanel();
+        await remove(id);
+      },
+      true,
+    );
+  }
+
+  function dismissPanel() {
+    useTimerStore.getState().clearResult();
+    setPanel(null);
   }
 
   function closePanel() {
-    if (session) return;
-    setPanel(null);
+    if (useTimerStore.getState().session) return;
+    dismissPanel();
   }
 
   if (loading && categories.length === 0) {
@@ -112,15 +147,25 @@ export default function LifeMapScreen() {
         ) : (
           categories.map((cat) => {
             const scene = scenes[cat.id];
+            const checkpoint = getCheckpointProgress(cat.totalBrickValue, cat.type);
             const showPlot =
               isFocused && (activePlotCategoryId == null || activePlotCategoryId === cat.id);
             return (
               <View key={cat.id} style={styles.plotCard}>
                 <View style={styles.plotHeader}>
-                  <Text style={styles.plotName}>{cat.name}</Text>
-                  <Text style={styles.plotMeta}>
-                    {cat.totalBrickValue.toFixed(1)} bricks · streak {cat.currentStreak}
-                  </Text>
+                  <View style={styles.plotHeaderText}>
+                    <Text style={styles.plotName}>{cat.name}</Text>
+                    <Text style={styles.plotMeta}>
+                      {checkpoint.label} toward {checkpoint.nextStageName}
+                      {' · '}streak {cat.currentStreak}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => confirmDeleteCategory(cat.id, cat.name)}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.delete}>Delete</Text>
+                  </Pressable>
                 </View>
                 {showPlot ? (
                   <SettlementPlot
@@ -173,12 +218,12 @@ export default function LifeMapScreen() {
           category={panelCategory}
           mode={panelMode}
           onClose={closePanel}
+          onEndSession={dismissPanel}
           onSceneRefresh={refreshCategoryScene}
           isTabFocused={isFocused}
         />
       )}
 
-      <ConfettiOverlay visible={active} />
       <UnlockCelebration visible={active} unlocks={unlocks} onDismiss={dismiss} />
     </View>
   );
@@ -198,9 +243,16 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
-  plotHeader: { marginBottom: theme.spacing.sm },
+  plotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing.sm,
+  },
+  plotHeaderText: { flex: 1, marginRight: theme.spacing.sm },
   plotName: { color: theme.colors.text, fontSize: 18, fontWeight: '600' },
   plotMeta: { color: theme.colors.textMuted, fontSize: 13, marginTop: 2 },
+  delete: { color: theme.colors.danger, fontSize: 14, fontWeight: '600' },
   plotActions: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md },
   focusBtn: { flex: 1 },
   addBtn: { marginTop: theme.spacing.sm },

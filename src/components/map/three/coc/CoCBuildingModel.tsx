@@ -1,7 +1,6 @@
 import type { CategoryType } from '@/types';
 import { COC_COLORS, scaleSize } from './cocPalette';
 import {
-  BrickCourse,
   CastleTowers,
   Chimney,
   Doorway,
@@ -10,12 +9,9 @@ import {
   FlatRoof,
   Fountain,
   GableRoof,
-  PeakRoof,
   PlasterWall,
   RoundHut,
-  StonePillar,
   StoneSlab,
-  WoodPost,
   WoodWall,
 } from './cocParts';
 
@@ -27,25 +23,14 @@ interface CoCBuildingModelProps {
   accentColor?: string;
 }
 
-function miniStage(stageIndex: number): number {
-  return Math.min(7, stageIndex);
-}
-
 export function CoCBuildingModel({
   stageIndex,
-  categoryType,
   progress,
   plotScale,
 }: CoCBuildingModelProps) {
-  const miniature = categoryType === 'miniature';
-  const idx = miniature ? miniStage(stageIndex) : stageIndex;
   const s = plotScale;
   const p = Math.min(1, Math.max(0, progress));
-
-  if (miniature) {
-    return <MiniBuilding idx={idx} s={s} p={p} />;
-  }
-  return <MacroBuilding idx={idx} s={s} p={p} />;
+  return <MacroBuilding idx={stageIndex} s={s} p={p} />;
 }
 
 function MacroBuilding({ idx, s, p }: { idx: number; s: number; p: number }) {
@@ -264,114 +249,6 @@ function MacroBuilding({ idx, s, p }: { idx: number; s: number; p: number }) {
             <CastleTowers s={s} miniature={false} w={w * 1.15} d={d * 1.15} h={h * 1.1} count={4} />
           </>
         )}
-      </group>
-    );
-  }
-
-  return null;
-}
-
-function MiniBuilding({ idx, s, p }: { idx: number; s: number; p: number }) {
-  const base = scaleSize(s, true, 2.2);
-
-  if (idx === 0) {
-    return (
-      <group>
-        {[-0.4, 0, 0.4].map((x, i) => (
-          <StoneSlab key={i} x={x * base * 0.3} y={0.04} z={0} w={base * 0.22} h={0.06} d={base * 0.22} />
-        ))}
-      </group>
-    );
-  }
-
-  if (idx === 1) {
-    return (
-      <group>
-        <BrickCourse x={0} z={0} w={base * 0.8} d={scaleSize(s, true, 0.2)} h={scaleSize(s, true, 0.18)} y={0} />
-        <StonePillar x={-base * 0.35} z={0} h={scaleSize(s, true, 0.22)} w={scaleSize(s, true, 0.18)} />
-        <StonePillar x={base * 0.35} z={0} h={scaleSize(s, true, 0.22)} w={scaleSize(s, true, 0.18)} />
-      </group>
-    );
-  }
-
-  if (idx === 2) {
-    return <EnclosureWalls s={s} miniature size={base * 0.9} courses={1} openFront />;
-  }
-
-  if (idx === 3) {
-    const h = scaleSize(s, true, 0.9);
-    return (
-      <group>
-        <WoodPost x={0} z={0} h={h} w={scaleSize(s, true, 0.08)} />
-        <mesh position={[0, h + scaleSize(s, true, 0.15), 0]}>
-          <boxGeometry args={[scaleSize(s, true, 0.35), scaleSize(s, true, 0.3), scaleSize(s, true, 0.35)]} />
-          <meshStandardMaterial color={COC_COLORS.woodLight} />
-        </mesh>
-        <PeakRoof
-          x={0}
-          z={0}
-          w={scaleSize(s, true, 0.5)}
-          d={scaleSize(s, true, 0.5)}
-          rise={scaleSize(s, true, 0.28)}
-          baseY={h + scaleSize(s, true, 0.15)}
-          color={COC_COLORS.roofTile}
-        />
-      </group>
-    );
-  }
-
-  if (idx === 4) {
-    const w = base * 0.75;
-    const d = base * 0.6;
-    const h = scaleSize(s, true, 0.75);
-    return (
-      <group>
-        <WoodWall x={0} z={0} w={w} d={d} h={h} />
-        <PeakRoof x={0} z={0} w={w} d={d} rise={h * 0.5} baseY={h} />
-        <Doorway x={0} z={d / 2 + 0.03} h={h * 0.5} w={w * 0.25} />
-      </group>
-    );
-  }
-
-  if (idx === 5) {
-    const w = base * 0.85;
-    const d = base * 0.7;
-    const h = scaleSize(s, true, 0.85);
-    return (
-      <group>
-        <PlasterWall x={0} z={0} w={w} d={d} h={h} />
-        <GableRoof x={0} z={0} w={w} d={d} rise={h * 0.42} baseY={h} color={COC_COLORS.thatch} />
-        <Doorway x={0} z={d / 2 + 0.03} h={h * 0.5} w={w * 0.22} />
-      </group>
-    );
-  }
-
-  if (idx === 6) {
-    const w = base * 1.05;
-    const d = base * 0.85;
-    const h = scaleSize(s, true, 1.1);
-    return (
-      <group>
-        <PlasterWall x={0} z={0} w={w} d={d} h={h} />
-        <GableRoof x={0} z={0} w={w} d={d} rise={h * 0.48} baseY={h} color={COC_COLORS.roofTile} />
-        <Chimney x={-w * 0.28} z={0} h={h * 0.45} y={h} />
-        <Doorway x={0} z={d / 2 + 0.03} h={h * 0.5} w={w * 0.2} />
-      </group>
-    );
-  }
-
-  if (idx === 7) {
-    const w = base * 1.15;
-    const d = base * 0.95;
-    const h = scaleSize(s, true, 1.25);
-    return (
-      <group>
-        <mesh position={[0, h / 2, 0]}>
-          <boxGeometry args={[w, h, d]} />
-          <meshStandardMaterial color={COC_COLORS.stoneLight} roughness={0.85} />
-        </mesh>
-        <CastleTowers s={s} miniature w={w} d={d} h={h} count={2} />
-        <Doorway x={0} z={d / 2 + 0.04} h={h * 0.45} w={w * 0.18} />
       </group>
     );
   }

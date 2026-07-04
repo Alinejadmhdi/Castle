@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,6 +14,15 @@ import { theme } from '@/constants/theme';
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   useDailySeal();
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void useTimerStore.getState().syncFromClock();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     async function init() {

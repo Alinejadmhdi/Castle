@@ -106,7 +106,17 @@ eas login                # once
 npm run build:apk        # cloud build → download .apk from Expo dashboard
 ```
 
-Local build (needs Android SDK + NDK):
+Local build without EAS (Gradle on your machine):
+
+```bash
+nvm use
+npm run prebuild:android   # once, generates android/
+npm run build:apk:gradle   # → LifesCastle-v0.1.apk
+```
+
+Prerequisites: Android SDK at `~/Android/Sdk` (platform 35, build-tools 35, NDK 27, CMake 3.22.1), and a full JDK 17 with `javac` (not JRE-only). The build script uses Aliyun Maven mirrors when Google repos are blocked.
+
+EAS local build (alternative):
 
 ```bash
 npm run build:apk:local

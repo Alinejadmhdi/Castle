@@ -126,6 +126,23 @@ function runQuery(sql: string, params: unknown[] = []): number {
     return 1;
   }
 
+  if (sql.includes('UPDATE categories SET') && sql.includes('total_brick_value = total_brick_value +')) {
+    const id = p[5] as string;
+    const idx = store.categories.findIndex((c) => c.id === id);
+    if (idx >= 0) {
+      store.categories[idx] = {
+        ...store.categories[idx],
+        totalBrickValue: store.categories[idx].totalBrickValue + (p[0] as number),
+        currentStageIndex: p[1] as number,
+        currentStreak: p[2] as number,
+        longestStreak: p[3] as number,
+        lastBrickDate: p[4] as string,
+      };
+      saveStore(store);
+    }
+    return 1;
+  }
+
   if (sql.includes('UPDATE categories SET')) {
     const id = p[p.length - 1] as string;
     const idx = store.categories.findIndex((c) => c.id === id);
@@ -427,6 +444,31 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         is_miniature: b.isMiniature ? 1 : 0,
       },
     ] as T[];
+  }
+  if (sql.includes('building_instance_id IS NULL')) {
+    const categoryId = params[0] as string;
+    const stageIndex = params[1] as number;
+    return [
+      {
+        c: store.bricks.filter(
+          (b) =>
+            b.categoryId === categoryId &&
+            b.stageIndex === stageIndex &&
+            b.buildingInstanceId == null,
+        ).length,
+      },
+    ] as T[];
+  }
+  if (sql.includes('COALESCE(SUM(fractional_value)')) {
+    const categoryId = params[0] as string;
+    const sum = store.bricks
+      .filter((b) => b.categoryId === categoryId)
+      .reduce((acc, b) => acc + b.fractionalValue, 0);
+    return [{ s: sum }] as T[];
+  }
+  if (sql.includes('SELECT total_brick_value FROM categories WHERE id = ?')) {
+    const c = store.categories.find((x) => x.id === params[0]);
+    return c ? ([{ total_brick_value: c.totalBrickValue }] as T[]) : [];
   }
   if (sql.includes('COUNT(*) as c FROM bricks WHERE category_id = ? AND stage_index')) {
     const categoryId = params[0] as string;

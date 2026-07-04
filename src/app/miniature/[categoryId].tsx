@@ -1,46 +1,42 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { logMiniatureResist } from '@/features/bricks/brickService';
+import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
 import { useCategoryStore } from '@/store/categoryStore';
-import { useCelebrationStore } from '@/store/celebrationStore';
+import { useMapSceneStore } from '@/store/mapSceneStore';
+import { useMotivationQuote } from '@/hooks/useMotivationQuote';
+import { useResist } from '@/hooks/useResist';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 
 export default function MiniatureLogScreen() {
   const { categoryId } = useLocalSearchParams<{ categoryId: string }>();
   const router = useRouter();
-  const { refreshOne } = useCategoryStore();
-  const { trigger } = useCelebrationStore();
-  const [logging, setLogging] = useState(false);
-  const [count, setCount] = useState(0);
+  const category = useCategoryStore((s) => s.categories.find((c) => c.id === categoryId));
+  const loadCategory = useMapSceneStore((s) => s.loadCategory);
+  const { tapResist, pending, error } = useResist({
+    categoryId,
+    categoryType: category?.type,
+  });
 
-  async function handleResist() {
-    if (!categoryId) return;
-    setLogging(true);
-    const result = await logMiniatureResist(categoryId);
-    await refreshOne(categoryId);
-    if (result.unlocks.length > 0) trigger(result.unlocks);
-    setCount((c) => c + 1);
-    setLogging(false);
-  }
+  const totalBricks = Math.floor(category?.totalBrickValue ?? 0);
+  const checkpoint = getCheckpointProgress(totalBricks, 'miniature');
+  const quote = useMotivationQuote(category?.name, totalBricks, 'miniature', totalBricks);
+
+  useEffect(() => {
+    if (categoryId) void loadCategory(categoryId);
+  }, [categoryId, loadCategory]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>✨</Text>
-      <Text style={styles.title}>Resisted temptation</Text>
-      <Text style={styles.sub}>
-        Each resist lays one miniature brick on your tiny settlement.
+      <Text style={styles.title}>{category?.name ?? 'Resist'}</Text>
+      <Text style={styles.checkpoint}>
+        {checkpoint.current} bricks · {checkpoint.label} toward {checkpoint.nextStageName}
       </Text>
-      {count > 0 && (
-        <Text style={styles.count}>{count} brick{count !== 1 ? 's' : ''} logged this visit</Text>
-      )}
-      <Button
-        title={logging ? 'Placing brick...' : 'I Resisted — Place Brick'}
-        onPress={handleResist}
-        disabled={logging}
-        style={styles.btn}
-      />
+      {quote && <Text style={styles.quote}>{quote}</Text>}
+      {pending > 0 && <Text style={styles.saving}>Saving…</Text>}
+      {error && <Text style={styles.error} selectable>{error}</Text>}
+      <Button title="I Resisted — Place Brick" onPress={tapResist} style={styles.btn} />
       <Button title="Back to Life Map" onPress={() => router.back()} variant="secondary" />
     </View>
   );
@@ -53,15 +49,29 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     justifyContent: 'center',
   },
-  emoji: { fontSize: 48, textAlign: 'center' },
   title: {
     color: theme.colors.text,
     fontSize: 24,
     fontWeight: '700',
     textAlign: 'center',
-    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
-  sub: { color: theme.colors.textMuted, textAlign: 'center', marginTop: theme.spacing.sm },
-  count: { color: theme.colors.primary, textAlign: 'center', marginTop: theme.spacing.lg },
-  btn: { marginTop: theme.spacing.xl, marginBottom: theme.spacing.sm },
+  checkpoint: {
+    color: theme.colors.primary,
+    textAlign: 'center',
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: theme.spacing.sm,
+  },
+  quote: {
+    color: theme.colors.text,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: theme.spacing.lg,
+    lineHeight: 20,
+    fontSize: 14,
+  },
+  saving: { color: theme.colors.textMuted, textAlign: 'center', marginBottom: theme.spacing.sm },
+  error: { color: theme.colors.danger, textAlign: 'center', marginBottom: theme.spacing.sm },
+  btn: { marginTop: theme.spacing.md },
 });

@@ -1,8 +1,10 @@
 import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
 import type { UnlockEvent } from '@/types';
+import { useCategoryStore } from '@/store/categoryStore';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { formatUnlockMessage, formatUnlockSummary } from '@/utils/unlockMessages';
+import { ConfettiOverlay } from '@/components/celebration/ConfettiOverlay';
+import { formatUnlockMessage, formatUnlockProgression, formatUnlockSummary } from '@/utils/unlockMessages';
 
 interface UnlockCelebrationProps {
   unlocks: UnlockEvent[];
@@ -11,22 +13,28 @@ interface UnlockCelebrationProps {
 }
 
 export function UnlockCelebration({ unlocks, visible, onDismiss }: UnlockCelebrationProps) {
+  const categories = useCategoryStore((s) => s.categories);
+
   if (!visible || unlocks.length === 0) return null;
   const latest = unlocks[unlocks.length - 1];
+  const categoryId = latest.buildingInstance?.categoryId;
+  const category = categories.find((c) => c.id === categoryId);
+  const categoryType = category?.type ?? (latest.type === 'miniature' ? 'miniature' : 'standard');
+  const progression = formatUnlockProgression(latest, categoryType, category?.name);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <Pressable style={styles.backdrop}>
+        <ConfettiOverlay visible />
         <View style={styles.card}>
           <Text style={styles.emoji}>🏰</Text>
           <Text style={styles.title}>Unlocked!</Text>
           <Text style={styles.name}>{latest.stageName}</Text>
           <Text style={styles.threshold}>{formatUnlockMessage(latest)}</Text>
-          <Text style={styles.sub}>
-            {unlocks.length > 1
-              ? formatUnlockSummary(unlocks)
-              : 'This structure stays on your settlement forever'}
-          </Text>
+          <Text style={styles.progression}>{progression}</Text>
+          {unlocks.length > 1 && (
+            <Text style={styles.sub}>{formatUnlockSummary(unlocks)}</Text>
+          )}
           <Button title="Continue Building" onPress={onDismiss} style={styles.btn} />
         </View>
       </Pressable>
@@ -40,12 +48,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     padding: theme.spacing.lg,
+    overflow: 'hidden',
   },
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xl,
     alignItems: 'center',
+    zIndex: 2,
   },
   emoji: { fontSize: 48 },
   title: {
@@ -66,10 +76,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: theme.spacing.xs,
   },
+  progression: {
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginTop: theme.spacing.md,
+    lineHeight: 22,
+    fontSize: 15,
+  },
   sub: {
     color: theme.colors.textMuted,
     textAlign: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    fontSize: 13,
   },
   btn: { marginTop: theme.spacing.xl, alignSelf: 'stretch' },
 });

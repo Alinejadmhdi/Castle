@@ -7,7 +7,7 @@ import {
 import { getCompoundRuleForStageGap } from '@/constants/compoundBuildings';
 import { getDailyStructureForBrickValue } from '@/constants/dailyBuildings';
 import { MINIATURE_BUILDING_STAGES } from '@/constants/miniatureBuildings';
-import { GRID_COLUMNS } from '@/rendering/three/constants';
+import { SOIL_GRID_COLUMNS } from '@/rendering/three/constants';
 import type {
   Brick,
   BuildingInstance,
@@ -90,14 +90,14 @@ export function allocateBrickToStage(
 }
 
 /**
- * Grid position for brick placement.
- * gridY=0 is the bottom course; bricks stack upward (ground → sky).
+ * Grid position for the wall on the soil border.
+ * Fills left → right along the back edge, then stacks upward (gridY = course).
  */
 export function computeGridPosition(
-  globalIndex: number,
-  columns = GRID_COLUMNS,
+  stackIndex: number,
+  columns = SOIL_GRID_COLUMNS,
 ): { gridX: number; gridY: number } {
-  const index = globalIndex - 1;
+  const index = Math.max(0, stackIndex);
   return {
     gridX: index % columns,
     gridY: Math.floor(index / columns),
@@ -128,8 +128,8 @@ export function bricksFillStage(bricks: Brick[], stageIndex: number): boolean {
 }
 
 /**
- * Wall bricks for the current in-progress stage only.
- * Completed stages are absorbed into the center building on upgrade.
+ * Wall bricks for the in-progress stage only.
+ * Earlier stages are absorbed into the center building on stage upgrade.
  */
 export function getVisibleWallBricks(
   bricks: Brick[],

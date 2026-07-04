@@ -1,0 +1,29 @@
+// Gradle init script: mirror Google Maven when dl.google.com is blocked/unavailable.
+// Usage: ./gradlew --init-script ../scripts/android-mirror-init.gradle assembleRelease
+
+def mirrorRepos = [
+    'https://maven.aliyun.com/repository/google',
+    'https://maven.aliyun.com/repository/public',
+    'https://maven.aliyun.com/repository/gradle-plugin',
+]
+
+beforeSettings { settings ->
+    settings.pluginManagement.repositories { repos ->
+        mirrorRepos.each { mirrorUrl ->
+            repos.maven { mavenRepo ->
+                url = mirrorUrl
+            }
+        }
+    }
+}
+
+gradle.beforeProject { project ->
+    mirrorRepos.each { mirrorUrl ->
+        project.buildscript.repositories.maven { mavenRepo ->
+            url = mirrorUrl
+        }
+        project.repositories.maven { mavenRepo ->
+            url = mirrorUrl
+        }
+    }
+}

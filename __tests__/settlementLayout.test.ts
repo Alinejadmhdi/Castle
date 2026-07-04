@@ -78,10 +78,10 @@ describe('settlementLayout', () => {
 });
 
 describe('monumentPersistence', () => {
-  it('miniature monuments from birdhouse onward', () => {
-    expect(MINIATURE_MONUMENT_FROM_STAGE_INDEX).toBe(3);
-    expect(shouldPersistStageMonument('miniature', 2)).toBe(false);
-    expect(shouldPersistStageMonument('miniature', 3)).toBe(true);
+  it('miniature monuments from hut onward', () => {
+    expect(MINIATURE_MONUMENT_FROM_STAGE_INDEX).toBe(9);
+    expect(shouldPersistStageMonument('miniature', 8)).toBe(false);
+    expect(shouldPersistStageMonument('miniature', 9)).toBe(true);
   });
 
   it('macro monuments from hut onward', () => {

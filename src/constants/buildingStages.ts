@@ -1,0 +1,32 @@
+import type { BuildingStage } from '@/types';
+
+/** Shared 27-stage ladder for standard (focus) and miniature (resist) categories. */
+export const MACRO_BUILDING_STAGES: BuildingStage[] = [
+  { index: 0, key: 'foundation', name: 'Foundation', cumulativeBricks: 4, stageBrickCount: 4, templateId: 'tpl_foundation', usesCompoundFill: false },
+  { index: 1, key: 'low_wall', name: 'Low Wall', cumulativeBricks: 12, stageBrickCount: 8, templateId: 'tpl_low_wall', usesCompoundFill: false },
+  { index: 2, key: 'knee_wall', name: 'Knee Wall', cumulativeBricks: 24, stageBrickCount: 12, templateId: 'tpl_knee_wall', usesCompoundFill: false },
+  { index: 3, key: 'chest_wall', name: 'Chest Wall', cumulativeBricks: 40, stageBrickCount: 16, templateId: 'tpl_chest_wall', usesCompoundFill: false },
+  { index: 4, key: 'full_enclosure', name: 'Full Enclosure', cumulativeBricks: 64, stageBrickCount: 24, templateId: 'tpl_full_enclosure', usesCompoundFill: false },
+  { index: 5, key: 'gated_wall', name: 'Gated Wall', cumulativeBricks: 88, stageBrickCount: 24, templateId: 'tpl_gated_wall', usesCompoundFill: false },
+  { index: 6, key: 'garden_enclosure', name: 'Garden Enclosure', cumulativeBricks: 120, stageBrickCount: 32, templateId: 'tpl_garden', usesCompoundFill: false },
+  { index: 7, key: 'lean_to', name: 'Lean-To Shelter', cumulativeBricks: 160, stageBrickCount: 40, templateId: 'tpl_lean_to', usesCompoundFill: false },
+  { index: 8, key: 'shack', name: 'Shack', cumulativeBricks: 210, stageBrickCount: 50, templateId: 'tpl_shack', usesCompoundFill: false },
+  { index: 9, key: 'hut', name: 'Hut', cumulativeBricks: 270, stageBrickCount: 60, templateId: 'tpl_hut', usesCompoundFill: false },
+  { index: 10, key: 'cottage', name: 'Cottage', cumulativeBricks: 350, stageBrickCount: 80, templateId: 'tpl_cottage', usesCompoundFill: true },
+  { index: 11, key: 'bungalow', name: 'Bungalow', cumulativeBricks: 450, stageBrickCount: 100, templateId: 'tpl_bungalow', usesCompoundFill: true },
+  { index: 12, key: 'small_house', name: 'Small House', cumulativeBricks: 580, stageBrickCount: 130, templateId: 'tpl_small_house', usesCompoundFill: true },
+  { index: 13, key: 'house', name: 'House', cumulativeBricks: 750, stageBrickCount: 170, templateId: 'tpl_house', usesCompoundFill: true },
+  { index: 14, key: 'farmhouse', name: 'Farmhouse', cumulativeBricks: 960, stageBrickCount: 210, templateId: 'tpl_farmhouse', usesCompoundFill: true },
+  { index: 15, key: 'townhouse', name: 'Townhouse', cumulativeBricks: 1220, stageBrickCount: 260, templateId: 'tpl_townhouse', usesCompoundFill: true },
+  { index: 16, key: 'manor', name: 'Manor', cumulativeBricks: 1540, stageBrickCount: 320, templateId: 'tpl_manor', usesCompoundFill: true },
+  { index: 17, key: 'villa', name: 'Villa', cumulativeBricks: 1920, stageBrickCount: 380, templateId: 'tpl_villa', usesCompoundFill: true },
+  { index: 18, key: 'mansion', name: 'Mansion', cumulativeBricks: 2400, stageBrickCount: 480, templateId: 'tpl_mansion', usesCompoundFill: true },
+  { index: 19, key: 'estate', name: 'Estate', cumulativeBricks: 3000, stageBrickCount: 600, templateId: 'tpl_estate', usesCompoundFill: true },
+  { index: 20, key: 'keep', name: 'Keep', cumulativeBricks: 3700, stageBrickCount: 700, templateId: 'tpl_keep', usesCompoundFill: true },
+  { index: 21, key: 'fortified_manor', name: 'Fortified Manor', cumulativeBricks: 4500, stageBrickCount: 800, templateId: 'tpl_fortified_manor', usesCompoundFill: true },
+  { index: 22, key: 'small_fort', name: 'Small Fort', cumulativeBricks: 5400, stageBrickCount: 900, templateId: 'tpl_small_fort', usesCompoundFill: true },
+  { index: 23, key: 'fort', name: 'Fort', cumulativeBricks: 6500, stageBrickCount: 1100, templateId: 'tpl_fort', usesCompoundFill: true },
+  { index: 24, key: 'citadel', name: 'Citadel', cumulativeBricks: 7800, stageBrickCount: 1300, templateId: 'tpl_citadel', usesCompoundFill: true },
+  { index: 25, key: 'castle_gatehouse', name: 'Castle Gatehouse', cumulativeBricks: 9200, stageBrickCount: 1400, templateId: 'tpl_gatehouse', usesCompoundFill: true },
+  { index: 26, key: 'castle', name: 'Castle', cumulativeBricks: 11000, stageBrickCount: 1800, templateId: 'tpl_castle', usesCompoundFill: true },
+];

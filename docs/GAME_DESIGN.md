@@ -148,7 +148,7 @@ The map is a **Clash-of-Clans-style isometric 3D plot** per category (grass pad,
 |----------|----------|
 | **Wall bricks** | Only bricks for the **current in-progress stage** render on the near wall. Older stage bricks are hidden from the wall. |
 | **Stage monuments** | When a stage unlocks, the **completed prior stage** is sealed as a permanent **monument** (CoC 3D mesh) at a **reserved non-overlapping plot slot** (position saved in DB). Monuments **never disappear** when you advance. |
-| **When monuments start** | **Miniature:** from **Birdhouse** (stage 3) onward. Earlier stages are wall-only. **Standard:** from **Hut** (stage 9) onward. Earlier wall tiers do not spawn plot monuments. |
+| **When monuments start** | **Hut** (stage 9) onward for both standard and miniature. Earlier wall tiers do not spawn plot monuments. |
 | **Wall → building** | On unlock, wall bricks from the finished stage are **absorbed** into that stage's monument (`buildingInstanceId` assigned). |
 | **In-progress stage** | New bricks for the active stage continue stacking on the wall until the next unlock. |
 | **Sub-buildings / compounds** | From stage 10 onward, long gaps also spawn **sub-buildings** (Pillar, Wing, Tower, Bastion) and **compounds** when enough subs combine — these are separate plotted instances, also permanent. |
@@ -211,21 +211,10 @@ Wings A–D stay forever. Grand Wing is a new plotted structure referencing bric
 
 ## Miniature Building Ladder
 
-For `categoryType: 'miniature'` (1 brick = 1 resisted temptation). Defined in `src/constants/miniatureBuildings.ts`.
+For `categoryType: 'miniature'` (1 brick = 1 resisted temptation). Uses the **same 27-stage ladder** as standard focus categories (`src/constants/buildingStages.ts`); see the macro table above for keys, names, and brick counts (Foundation → Castle, 4 → 11,000 cumulative).
 
-| Stage | Key | Building | Cumulative | This stage |
-|-------|-----|----------|------------|------------|
-| 0 | `pebble_path` | Pebble Path | 3 | 3 |
-| 1 | `tiny_wall` | Tiny Wall | 7 | 4 |
-| 2 | `garden_fence` | Garden Fence | 12 | 5 |
-| 3 | `birdhouse` | Birdhouse | 18 | 6 |
-| 4 | `mini_shed` | Mini Shed | 25 | 7 |
-| 5 | `mini_cottage` | Mini Cottage | 35 | 10 |
-| 6 | `mini_manor` | Mini Manor | 50 | 15 |
-| 7 | `mini_castle` | Mini Castle | 75 | 25 |
-
-- Rendered at **40% scale** (`MINIATURE_SCALE = 0.4`) on the same 3D plot style as standard categories.
-- Same monument + wall-absorption rules as macro stages (per-stage monuments persist on the plot).
+- Rendered at **40% scale** (`MINIATURE_SCALE = 0.4`) on the same 3D plot style and building shapes as standard categories.
+- Monument persistence from **Hut** (stage 9) onward, same as standard.
 
 ## Brick Colors
 

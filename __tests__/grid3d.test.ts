@@ -1,26 +1,30 @@
 import {
-  getGroundDimensions,
+  getSoilDimensions,
   gridToWorldPosition,
   getWallHeightCourses,
 } from '../src/rendering/three/gridToWorld';
 import { computeGridPosition } from '../src/features/progression/progressionService';
+import { SOIL_GRID_COLUMNS } from '../src/rendering/three/constants';
 
-describe('computeGridPosition bottom-up', () => {
-  it('places first brick at bottom row (gridY=0)', () => {
-    expect(computeGridPosition(1)).toEqual({ gridX: 0, gridY: 0 });
+describe('computeGridPosition wall grid', () => {
+  it('places first brick at bottom-left (gridX=0, gridY=0)', () => {
+    expect(computeGridPosition(0)).toEqual({ gridX: 0, gridY: 0 });
   });
 
-  it('fills row left to right then stacks up', () => {
-    expect(computeGridPosition(20)).toEqual({ gridX: 19, gridY: 0 });
-    expect(computeGridPosition(21)).toEqual({ gridX: 0, gridY: 1 });
+  it('fills a row left to right then stacks upward', () => {
+    expect(computeGridPosition(1)).toEqual({ gridX: 1, gridY: 0 });
+    expect(computeGridPosition(SOIL_GRID_COLUMNS - 1)).toEqual({
+      gridX: SOIL_GRID_COLUMNS - 1,
+      gridY: 0,
+    });
+    expect(computeGridPosition(SOIL_GRID_COLUMNS)).toEqual({ gridX: 0, gridY: 1 });
   });
 });
 
 describe('gridToWorldPosition', () => {
-  it('puts gridY=0 on the ground (y = half brick height)', () => {
+  it('puts gridY=0 on the soil (y above dirt plane)', () => {
     const pos = gridToWorldPosition(0, 0, 1);
-    expect(pos.y).toBeGreaterThan(0);
-    expect(pos.y).toBeCloseTo(0.225, 2);
+    expect(pos.y).toBeGreaterThan(0.04);
   });
 
   it('stacks second course higher', () => {
@@ -29,29 +33,34 @@ describe('gridToWorldPosition', () => {
     expect(second.y).toBeGreaterThan(bottom.y);
   });
 
+  it('spreads bricks along the back border on gridX', () => {
+    const left = gridToWorldPosition(0, 0, 1);
+    const right = gridToWorldPosition(1, 0, 1);
+    expect(right.x).toBeGreaterThan(left.x);
+    expect(right.z).toBe(left.z);
+  });
+
   it('scales fractional bricks on X', () => {
     const pos = gridToWorldPosition(0, 0, 0.5);
     expect(pos.scaleX).toBe(0.5);
   });
 
-  it('anchors wall to the left edge of the ground', () => {
-    const { width: groundW } = getGroundDimensions(1);
-    const first = gridToWorldPosition(0, 0, 1);
-    const second = gridToWorldPosition(1, 0, 1);
-    expect(first.x).toBeLessThan(second.x);
-    expect(first.x - 0.5).toBeGreaterThan(-groundW / 2);
-  });
-
-  it('places wall along the back edge of the ground (negative Z)', () => {
-    const { depth: groundD } = getGroundDimensions(1);
+  it('places bricks on the soil border corner (not the map edge)', () => {
+    const { half } = getSoilDimensions(1);
     const pos = gridToWorldPosition(0, 0, 1);
+    expect(Math.abs(pos.x)).toBeLessThanOrEqual(half);
+    expect(Math.abs(pos.z)).toBeLessThanOrEqual(half);
+    expect(pos.x).toBeLessThan(0);
     expect(pos.z).toBeLessThan(0);
-    expect(pos.z).toBeGreaterThan(-groundD / 2);
   });
 });
 
 describe('getWallHeightCourses', () => {
   it('returns at least 1 course', () => {
     expect(getWallHeightCourses(0)).toBe(1);
+  });
+
+  it('grows with row count', () => {
+    expect(getWallHeightCourses(SOIL_GRID_COLUMNS + 1)).toBe(2);
   });
 });

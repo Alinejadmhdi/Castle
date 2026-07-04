@@ -90,13 +90,23 @@ export async function getBrickCount(categoryId: string): Promise<number> {
   return row?.c ?? 0;
 }
 
+export async function sumBrickValueByCategory(categoryId: string): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ s: number }>(
+    'SELECT COALESCE(SUM(fractional_value), 0) as s FROM bricks WHERE category_id = ?',
+    [categoryId],
+  );
+  return row?.s ?? 0;
+}
+
 export async function getBrickCountForStage(
   categoryId: string,
   stageIndex: number,
 ): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ c: number }>(
-    'SELECT COUNT(*) as c FROM bricks WHERE category_id = ? AND stage_index = ?',
+    `SELECT COUNT(*) as c FROM bricks
+     WHERE category_id = ? AND stage_index = ? AND building_instance_id IS NULL`,
     [categoryId, stageIndex],
   );
   return row?.c ?? 0;

@@ -3,15 +3,14 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import type { Category, BuildingInstance, Brick } from '@/types';
 import { useTimerStore } from '@/store/timerStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { logMiniatureResist } from '@/features/bricks/brickService';
-import { useCategoryStore } from '@/store/categoryStore';
-import { useCelebrationStore } from '@/store/celebrationStore';
+import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
+import { useMotivationQuote } from '@/hooks/useMotivationQuote';
+import { useResist } from '@/hooks/useResist';
 import { startAmbient, stopAmbient, playCompleteSound } from '@/services/audio/audioService';
 import { useFocusSessionAppState } from '@/hooks/useFocusSessionAppState';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { formatBrickValue } from '@/utils';
-import { formatUnlockMessage } from '@/utils/unlockMessages';
+import { showFocusPrimerIfNeeded } from '@/utils/focusPrimer';
 
 const DURATIONS = [
   { label: '25m', ms: 25 * 60 * 1000 },
@@ -31,7 +30,8 @@ function formatTime(ms: number): string {
 export type MapPanelMode = 'focus-setup' | 'resist';
 
 export interface SceneBrickUpdate {
-  brick: Brick;
+  brick?: Brick;
+  bricks?: Brick[];
   buildings?: BuildingInstance[];
 }
 
@@ -39,6 +39,8 @@ interface MapActionPanelProps {
   category: Category;
   mode: MapPanelMode;
   onClose: () => void;
+  /** Called after abandon / give up — always closes the panel. */
+  onEndSession: () => void;
   onSceneRefresh: (categoryId: string, update?: SceneBrickUpdate) => void;
   /** Life Map tab is visible — avoids audio/GL work while on Settings. */
   isTabFocused?: boolean;
@@ -48,23 +50,30 @@ export function MapActionPanel({
   category,
   mode,
   onClose,
+  onEndSession,
   onSceneRefresh,
   isTabFocused = true,
 }: MapActionPanelProps) {
   const { session, remainingMs, start, pause, resume, abandon, lastResult, clearResult } =
     useTimerStore();
   const { settings } = useSettingsStore();
-  const { refreshOne } = useCategoryStore();
-  const { trigger } = useCelebrationStore();
   const [durationMs, setDurationMs] = useState(DURATIONS[0].ms);
-  const [logging, setLogging] = useState(false);
-  const [resistCount, setResistCount] = useState(0);
+  const { tapResist, pending, error: resistError } = useResist({
+    categoryId: category.id,
+    categoryType: category.type,
+    onSceneUpdate: (categoryId, bricks, buildings) =>
+      onSceneRefresh(categoryId, { bricks, buildings }),
+  });
+
+  const totalBricks = Math.floor(category.totalBrickValue);
+  const checkpoint = getCheckpointProgress(totalBricks, category.type);
+  const quote = useMotivationQuote(category.name, totalBricks, category.type, totalBricks);
 
   const isActiveForCategory = session?.categoryId === category.id;
   const showActive = isActiveForCategory && session != null;
   const showComplete = lastResult != null && !session;
 
-  useFocusSessionAppState(onClose);
+  useFocusSessionAppState(onEndSession);
 
   useEffect(() => {
     if (!isTabFocused || !showActive || !session) {
@@ -98,46 +107,26 @@ export function MapActionPanel({
   }, [showComplete, category.id, lastResult, onSceneRefresh]);
 
   async function handleStartFocus() {
-    await start({
-      categoryId: category.id,
-      brickColor: category.defaultColor,
-      plannedDurationMs: durationMs,
+    showFocusPrimerIfNeeded(() => {
+      void start({
+        categoryId: category.id,
+        brickColor: category.defaultColor,
+        plannedDurationMs: durationMs,
+      }).catch((error) => {
+        console.error('Start focus failed:', error);
+      });
     });
-  }
-
-  async function handleResist() {
-    setLogging(true);
-    const result = await logMiniatureResist(category.id);
-    await refreshOne(category.id);
-    const newBuildings = result.unlocks
-      .map((u) => u.buildingInstance)
-      .filter((b): b is BuildingInstance => b != null);
-    onSceneRefresh(category.id, { brick: result.bricks[0], buildings: newBuildings });
-    if (result.unlocks.length > 0) trigger(result.unlocks);
-    setResistCount((c) => c + 1);
-    setLogging(false);
   }
 
   function handleDismissComplete() {
     clearResult();
-    onClose();
+    onEndSession();
   }
 
   if (showComplete) {
-    const brick = lastResult?.bricks[0];
     return (
       <View style={styles.panel}>
         <Text style={styles.completeTitle}>Brick placed on your wall</Text>
-        {brick && (
-          <Text style={styles.completeValue}>
-            +{formatBrickValue(brick.fractionalValue)} brick-hour
-          </Text>
-        )}
-        {lastResult && lastResult.unlocks.length > 0 && (
-          <Text style={styles.unlock}>
-            Unlocked: {formatUnlockMessage(lastResult.unlocks[lastResult.unlocks.length - 1])}
-          </Text>
-        )}
         <Button title="Continue on Life Map" onPress={handleDismissComplete} />
       </View>
     );
@@ -162,9 +151,8 @@ export function MapActionPanel({
             title="Give Up"
             variant="danger"
             style={styles.rowBtn}
-            onPress={async () => {
-              await abandon();
-              onClose();
+            onPress={() => {
+              void abandon().then(onEndSession);
             }}
           />
         </View>
@@ -176,17 +164,13 @@ export function MapActionPanel({
     return (
       <View style={styles.panel}>
         <Text style={styles.categoryName}>{category.name}</Text>
-        <Text style={styles.hint}>Log a resist — one miniature brick on the wall</Text>
-        {resistCount > 0 && (
-          <Text style={styles.resistCount}>
-            {resistCount} brick{resistCount !== 1 ? 's' : ''} this session
-          </Text>
-        )}
-        <Button
-          title={logging ? 'Placing…' : 'I Resisted — Place Brick'}
-          onPress={handleResist}
-          disabled={logging}
-        />
+        <Text style={styles.checkpoint}>
+          {checkpoint.current} bricks · {checkpoint.label} toward {checkpoint.nextStageName}
+        </Text>
+        {quote && <Text style={styles.quote}>{quote}</Text>}
+        {pending > 0 && <Text style={styles.saving}>Saving…</Text>}
+        {resistError && <Text style={styles.resistError} selectable>{resistError}</Text>}
+        <Button title="I Resisted — Place Brick" onPress={tapResist} />
         <Button title="Close" onPress={onClose} variant="secondary" style={styles.closeBtn} />
       </View>
     );
@@ -255,8 +239,29 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
+    marginBottom: theme.spacing.md,
   },
-  completeValue: { color: theme.colors.text, textAlign: 'center', marginVertical: theme.spacing.sm },
-  unlock: { color: theme.colors.primary, textAlign: 'center', marginBottom: theme.spacing.md },
-  resistCount: { color: theme.colors.primary, textAlign: 'center', marginBottom: theme.spacing.sm },
+  checkpoint: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  quote: {
+    color: theme.colors.text,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: theme.spacing.md,
+    lineHeight: 20,
+    fontSize: 14,
+  },
+  saving: { color: theme.colors.textMuted, textAlign: 'center', marginBottom: theme.spacing.sm },
+  resistError: {
+    color: theme.colors.danger,
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+    fontSize: 12,
+    lineHeight: 16,
+  },
 });

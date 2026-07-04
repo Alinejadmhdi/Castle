@@ -26,7 +26,7 @@ const COMING_SOON: { key: keyof typeof FEATURE_FLAGS; label: string }[] = [
 export default function SettingsScreen() {
   const router = useRouter();
   const { settings, update } = useSettingsStore();
-  const { categories, remove, load } = useCategoryStore();
+  const { categories, load } = useCategoryStore();
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
   const [devBrickAmounts, setDevBrickAmounts] = useState<Record<string, string>>({});
   const [devBusy, setDevBusy] = useState(false);
@@ -76,17 +76,6 @@ export default function SettingsScreen() {
     );
   }
 
-  function confirmDelete(id: string, name: string) {
-    confirmAction(
-      'Delete category',
-      `Remove "${name}" and all its bricks?`,
-      'Delete',
-      async () => {
-        await remove(id);
-      },
-      true,
-    );
-  }
 
   async function grantDevBricks(categoryId: string, categoryName: string) {
     const parsed = parseInt(devBrickAmounts[categoryId] ?? '', 10);
@@ -127,7 +116,11 @@ export default function SettingsScreen() {
           onPress={() => update({ focusMode: mode })}
           style={[styles.row, settings.focusMode === mode && styles.rowActive]}
         >
-          <Text style={styles.rowText}>{mode === 'soft' ? 'Soft (1 pause)' : 'Strict (no leave)'}</Text>
+          <Text style={styles.rowText}>
+            {mode === 'soft'
+              ? 'Soft — timer runs when screen locks'
+              : 'Strict — leaving app cancels session'}
+          </Text>
         </Pressable>
       ))}
 
@@ -160,20 +153,6 @@ export default function SettingsScreen() {
         <Text style={styles.rowText}>Haptics: {settings.hapticsEnabled ? 'On' : 'Off'}</Text>
       </Pressable>
 
-      <Text style={styles.section}>Your categories</Text>
-      {categories.map((cat) => (
-        <View key={cat.id} style={styles.catRow}>
-          <View>
-            <Text style={styles.rowText}>{cat.name}</Text>
-            <Text style={styles.catMeta}>{cat.type}</Text>
-          </View>
-          <Pressable onPress={() => confirmDelete(cat.id, cat.name)}>
-            <Text style={styles.delete}>Delete</Text>
-          </Pressable>
-        </View>
-      ))}
-      <Button title="+ Add Category" onPress={() => router.push('/category/new')} variant="secondary" />
-
       <Text style={styles.section}>Daily build</Text>
       <Text style={styles.devHint}>
         Seal today&apos;s daily structure (2+ hours logged). Past open days auto-seal at midnight when
@@ -200,7 +179,7 @@ export default function SettingsScreen() {
           <Text style={styles.section}>Developer tools (Expo Go)</Text>
           <Text style={styles.devHint}>
             Add whole bricks to any category to test stage unlocks and monument placement. Standard
-            categories keep monuments from Hut (stage 9); miniature from Birdhouse (stage 3).
+            categories keep monuments from Hut (stage 9) onward.
           </Text>
           {categories.map((cat) => (
             <View key={`dev-${cat.id}`} style={styles.devRow}>

@@ -81,13 +81,9 @@ export function BrickWallInstanced({
       return;
     }
 
-    const prevCount = prevCountRef.current;
-    const addedOne = instancedBricks.length === prevCount + 1;
-    const startIndex = addedOne && prevCount > 0 ? prevCount : 0;
-
     mesh.count = instancedBricks.length;
 
-    for (let i = startIndex; i < instancedBricks.length; i++) {
+    for (let i = 0; i < instancedBricks.length; i++) {
       const brick = instancedBricks[i];
       const { x, y, z, scaleX } = gridToWorldPosition(
         brick.gridX,
