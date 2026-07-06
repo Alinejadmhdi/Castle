@@ -2,11 +2,15 @@ import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTimerStore } from '@/store/timerStore';
+import { useCategoryStore } from '@/store/categoryStore';
+import { useMapSceneStore } from '@/store/mapSceneStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useFocusSessionAppState } from '@/hooks/useFocusSessionAppState';
 import { startAmbient, stopAmbient } from '@/services/audio/audioService';
+import { SettlementPlot } from '@/components/map/SettlementPlot';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
+import { formatBrickValue, msToBrickValue } from '@/utils';
 
 function formatTime(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
@@ -19,8 +23,14 @@ function formatTime(ms: number): string {
 
 export default function ActiveSessionScreen() {
   const router = useRouter();
-  const { session, remainingMs, pause, resume, abandon, lastResult } = useTimerStore();
+  const { session, remainingMs, pause, resume, abandon, complete, lastResult } = useTimerStore();
   const { settings } = useSettingsStore();
+  const categories = useCategoryStore((s) => s.categories);
+  const scenes = useMapSceneStore((s) => s.scenes);
+  const loadCategory = useMapSceneStore((s) => s.loadCategory);
+
+  const category = session ? categories.find((c) => c.id === session.categoryId) : null;
+  const scene = session ? scenes[session.categoryId] : undefined;
 
   useFocusSessionAppState(() => router.replace('/'));
 
@@ -37,6 +47,11 @@ export default function ActiveSessionScreen() {
   }, [session, lastResult, router]);
 
   useEffect(() => {
+    if (!session?.categoryId) return;
+    void loadCategory(session.categoryId);
+  }, [session?.categoryId, loadCategory]);
+
+  useEffect(() => {
     if (!session) return;
     if (settings.ambientSound !== 'none') {
       void startAmbient(settings.ambientSound);
@@ -48,38 +63,64 @@ export default function ActiveSessionScreen() {
 
   if (!session) return null;
 
+  const isStopwatch = session.timerMode === 'stopwatch';
   const isPaused = session.status === 'paused';
+  const displayMs = isStopwatch ? remainingMs : remainingMs;
+  const brickPreview = msToBrickValue(displayMs, settings.fractionalBricksEnabled);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.mode}>{settings.focusMode === 'strict' ? 'Strict' : 'Soft'} mode</Text>
-      <Text style={styles.timer}>{formatTime(remainingMs)}</Text>
-      <Text style={styles.hint}>
-        {isPaused
-          ? 'Paused — tap Resume to continue'
-          : 'Stay focused. Your brick is baking...'}
-      </Text>
-
-      <View style={styles.kiln}>
-        <Text style={styles.kilnEmoji}>🧱</Text>
-        <Text style={styles.kilnText}>Kiln active</Text>
+      <View style={styles.plotWrap}>
+        <SettlementPlot
+          bricks={scene?.bricks ?? []}
+          buildings={scene?.buildings ?? []}
+          scale={1}
+          totalBrickValue={category?.totalBrickValue ?? 0}
+          categoryType="miniature"
+          wallColor={session.brickColor}
+        />
       </View>
 
-      <View style={styles.actions}>
-        {isPaused ? (
-          <Button title="Resume" onPress={resume} />
-        ) : (
-          <Button title="Pause" onPress={pause} variant="secondary" />
-        )}
-        <Button
-          title="Give Up"
-          onPress={async () => {
-            await abandon();
-            router.replace('/');
-          }}
-          variant="danger"
-          style={styles.giveUp}
-        />
+      <View style={styles.hud}>
+        <Text style={styles.mode}>
+          {settings.focusMode === 'strict' ? 'Strict' : 'Soft'} · {isStopwatch ? 'Stopwatch' : 'Countdown'}
+        </Text>
+        <Text style={styles.timer}>{formatTime(displayMs)}</Text>
+        <Text style={styles.brickPreview}>
+          Baking {formatBrickValue(brickPreview)} brick{brickPreview === 1 ? '' : 's'} (1 hr = 1 brick)
+        </Text>
+        <Text style={styles.hint}>
+          {isPaused
+            ? 'Paused — tap Resume to continue'
+            : isStopwatch
+              ? 'Stay focused — tap Finish when done'
+              : 'Stay focused. Your brick is baking...'}
+        </Text>
+
+        <View style={styles.actions}>
+          {isPaused ? (
+            <Button title="Resume" onPress={resume} />
+          ) : (
+            <Button title="Pause" onPress={pause} variant="secondary" />
+          )}
+          {isStopwatch ? (
+            <Button
+              title="Finish & Place Brick"
+              onPress={async () => {
+                await complete();
+              }}
+            />
+          ) : null}
+          <Button
+            title="Give Up"
+            onPress={async () => {
+              await abandon();
+              router.replace('/');
+            }}
+            variant="danger"
+            style={styles.giveUp}
+          />
+        </View>
       </View>
     </View>
   );
@@ -89,21 +130,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  mode: { color: theme.colors.textMuted, marginBottom: theme.spacing.sm },
+  plotWrap: {
+    flex: 1,
+    minHeight: 280,
+  },
+  hud: {
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.radius.lg,
+    borderTopRightRadius: theme.radius.lg,
+  },
+  mode: { color: theme.colors.textMuted, marginBottom: theme.spacing.xs },
   timer: {
     color: theme.colors.primary,
-    fontSize: 64,
+    fontSize: 48,
     fontWeight: '200',
     fontVariant: ['tabular-nums'],
   },
-  hint: { color: theme.colors.textMuted, marginTop: theme.spacing.md, textAlign: 'center' },
-  kiln: { marginTop: theme.spacing.xl, alignItems: 'center' },
-  kilnEmoji: { fontSize: 48 },
-  kilnText: { color: theme.colors.text, marginTop: theme.spacing.sm },
-  actions: { marginTop: theme.spacing.xl, alignSelf: 'stretch', gap: theme.spacing.sm },
-  giveUp: { marginTop: theme.spacing.sm },
+  brickPreview: {
+    color: theme.colors.text,
+    marginTop: theme.spacing.xs,
+    fontSize: 14,
+  },
+  hint: { color: theme.colors.textMuted, marginTop: theme.spacing.sm, textAlign: 'center' },
+  actions: { marginTop: theme.spacing.lg, gap: theme.spacing.sm },
+  giveUp: { marginTop: theme.spacing.xs },
 });

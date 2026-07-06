@@ -1,6 +1,6 @@
 {
   "name": "lifes-castle",
-  "version": "0.3.8",
+  "version": "0.3.11",
   "description": "Life's Castle — focus timer that builds brick walls and castles",
   "main": "expo-router/entry",
   "scripts": {
