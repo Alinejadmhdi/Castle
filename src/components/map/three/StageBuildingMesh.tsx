@@ -46,7 +46,7 @@ export function StageBuildingMesh({
     <group position={[position.x, 0, position.z]}>
       <BuildingStageSprite
         stageIndex={stageIndex}
-        categoryType="standard"
+        categoryType={building.kind === 'miniature' ? 'miniature' : 'standard'}
         plotScale={plotScale * building.scale}
         sizeScale={spriteSizeScale(true, false, stageIndex, currentHqStageIndex)}
         renderOrder={spriteDepthRenderOrder(position.x, position.z)}

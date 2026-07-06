@@ -1,10 +1,12 @@
-import { memo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import '@/rendering/three/nativeThreeSetup';
+import { Suspense, memo } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Canvas, events } from '@react-three/fiber/native';
 import type { Brick, BuildingInstance, CategoryType } from '@/types';
-import { SettlementPlotOverlay } from './SettlementPlotOverlay';
+import { theme } from '@/constants/theme';
+import { SettlementScene3D } from './three/SettlementScene3D';
 import { MapBackgroundImage } from './MapBackgroundImage';
-import { BuildingSpritesOverlay } from './BuildingSpritesOverlay';
-import { BrickWallOverlay } from './BrickWallOverlay';
+import { SettlementPlotOverlay } from './SettlementPlotOverlay';
 
 interface SettlementPlotProps {
   bricks: Brick[];
@@ -17,11 +19,7 @@ interface SettlementPlotProps {
   onBrickPress?: (brick: Brick) => void;
 }
 
-/**
- * Native Life Map — 2D React Native layers only.
- * Three.js Canvas is unreliable on Android release (blank GL + texture crashes).
- * Web uses SettlementPlot.web.tsx with full 3D.
- */
+/** Native Life Map — expo-gl + R3F (same scene graph as Expo Go / web). */
 export const SettlementPlot = memo(function SettlementPlot({
   bricks,
   buildings,
@@ -34,20 +32,34 @@ export const SettlementPlot = memo(function SettlementPlot({
   return (
     <View style={styles.wrap}>
       <MapBackgroundImage />
-      <BrickWallOverlay
-        bricks={bricks}
-        totalBrickValue={totalBrickValue}
-        categoryType={categoryType}
-        plotScale={scale}
-        highlightBrickId={highlightBrickId}
-        onBrickPress={onBrickPress}
-      />
-      <BuildingSpritesOverlay
-        buildings={buildings}
-        totalBrickValue={totalBrickValue}
-        categoryType={categoryType}
-        plotScale={scale}
-      />
+      <Suspense
+        fallback={
+          <View style={styles.loader}>
+            <ActivityIndicator color={theme.colors.primary} />
+          </View>
+        }
+      >
+        <Canvas
+          style={styles.canvas}
+          orthographic
+          frameloop="always"
+          events={events}
+          gl={{ alpha: true, antialias: true }}
+          onCreated={({ gl }) => {
+            gl.setClearColor(0x000000, 0);
+          }}
+        >
+          <SettlementScene3D
+            bricks={bricks}
+            buildings={buildings}
+            plotScale={scale}
+            totalBrickValue={totalBrickValue}
+            categoryType={categoryType}
+            highlightBrickId={highlightBrickId}
+            onBrickPress={onBrickPress}
+          />
+        </Canvas>
+      </Suspense>
       <SettlementPlotOverlay
         totalBrickValue={totalBrickValue}
         categoryType={categoryType}
@@ -63,5 +75,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#4a9238',
+  },
+  canvas: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  loader: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 });

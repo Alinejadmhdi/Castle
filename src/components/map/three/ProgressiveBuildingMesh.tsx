@@ -39,7 +39,7 @@ export function ProgressiveBuildingMesh({
     <group position={[worldX, 0, worldZ]}>
       <BuildingStageSprite
         stageIndex={visual.stageIndex}
-        categoryType="standard"
+        categoryType={categoryType}
         plotScale={plotScale}
         sizeScale={spriteSizeScale(false, false, visual.stageIndex)}
         anchorLow

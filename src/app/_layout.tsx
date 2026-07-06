@@ -1,3 +1,4 @@
+import '@/rendering/three/nativeThreeSetup';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { Stack } from 'expo-router';

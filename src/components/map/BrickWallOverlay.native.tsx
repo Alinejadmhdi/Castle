@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
   layer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 2,
+    elevation: 4,
   },
   highlighted: {
     borderWidth: 2,

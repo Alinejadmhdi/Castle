@@ -2,7 +2,7 @@ import type { ImageStyle, ViewStyle } from 'react-native';
 import type { CategoryType } from '@/types';
 import type { Brick } from '@/types';
 import { BRICK_DEPTH, BRICK_HEIGHT, BRICK_WIDTH, SOIL_GRID_COLUMNS } from '@/rendering/three/constants';
-import { HQ_LAYOUT, MAP_SCENE_OFFSET, WALL_OVERLAY } from '@/rendering/three/mapContentLayout';
+import { HQ_LAYOUT, HQ_OVERLAY, MAP_SCENE_OFFSET, WALL_OVERLAY } from '@/rendering/three/mapContentLayout';
 import { gridToWorldPosition, getGroundDimensions } from '@/rendering/three/gridToWorld';
 import { SPRITE_BASE_WIDTH, spriteSizeScale } from '@/components/map/three/coc/cocPalette';
 import {
@@ -49,14 +49,17 @@ export function hqOverlayLayout(
 ): ImageStyle {
   const miniature = categoryType === 'miniature';
   const sizeScale = spriteSizeScale(false, miniature, stageIndex);
-  const width = spriteWidthPercent(plotScale, sizeScale, miniature);
-  const { left, top } = worldToOverlayPercent(HQ_LAYOUT.worldX, HQ_LAYOUT.worldZ, plotScale);
+  const width = Math.max(
+    HQ_OVERLAY.widthPct,
+    spriteWidthPercent(plotScale, sizeScale, miniature),
+  );
+  const height = width / 0.94;
   return {
     position: 'absolute',
-    left: pct(left - width / 2),
-    top: pct(top - width * 0.38),
+    left: pct(HQ_OVERLAY.centerLeft - width / 2),
+    top: pct(HQ_OVERLAY.centerTop - height * 0.42),
     width: pct(width),
-    aspectRatio: 0.94,
+    height: pct(height),
   };
 }
 
@@ -115,17 +118,19 @@ export function brickOverlayLayout(brick: Brick, plotScale: number): BrickOverla
 
   const topFacePct = heightPct * 0.28;
   const frontFacePct = heightPct * 0.72;
+  const totalHeightPct = topFacePct + frontFacePct;
 
   return {
     container: {
       position: 'absolute',
       left: pct(left - widthPct / 2 + depthSkewLeft * 0.28),
-      top: pct(top - topFacePct - frontFacePct - depthSkewTop * 0.45),
+      top: pct(top - totalHeightPct - depthSkewTop * 0.45),
       width: pct(widthPct),
+      height: pct(totalHeightPct),
       zIndex: brick.gridY * 100 + brick.gridX + 1,
     },
-    topHeightPct: pct(topFacePct),
-    frontHeightPct: pct(frontFacePct),
+    topHeightPct: pct((topFacePct / totalHeightPct) * 100),
+    frontHeightPct: pct((frontFacePct / totalHeightPct) * 100),
     depthSkewLeftPct: pct(Math.abs(depthSkewLeft)),
     depthSkewTopPct: pct(Math.abs(depthSkewTop)),
   };

@@ -78,6 +78,13 @@ export const WALL_OVERLAY = {
   brickWidthPct: 6.5,
 } as const;
 
+/** Center HQ on the inner grass diamond (% of square plot). */
+export const HQ_OVERLAY = {
+  centerLeft: 50,
+  centerTop: 56,
+  widthPct: 30,
+} as const;
+
 /** Isometric draw order — higher +Z / +X draws on top (ring in front of HQ). */
 export function spriteDepthRenderOrder(worldX: number, worldZ: number): number {
   return Math.round((worldX + worldZ) * 10) + 1;

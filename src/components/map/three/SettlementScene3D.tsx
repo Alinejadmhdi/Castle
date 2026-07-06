@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { Brick, BuildingInstance, CategoryType } from '@/types';
 import { CoCLighting } from './coc/CoCLighting';
 import { getVisibleWallBricks, getStageForBrickValue } from '@/features/progression/progressionService';
@@ -60,6 +60,22 @@ export function SettlementScene3D({
     () => layoutMonuments(monuments, currentHqStageIndex, plotScale),
     [monuments, currentHqStageIndex, plotScale],
   );
+
+  useEffect(() => {
+    console.log('[SettlementScene3D]', {
+      wallBricks: wallBricks.length,
+      monuments: monuments.length,
+      hqStage: currentHqStageIndex,
+      totalBrickValue,
+      categoryType,
+    });
+  }, [
+    wallBricks.length,
+    monuments.length,
+    currentHqStageIndex,
+    totalBrickValue,
+    categoryType,
+  ]);
 
   return (
     <>

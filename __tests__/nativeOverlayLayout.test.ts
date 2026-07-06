@@ -6,8 +6,9 @@ describe('native overlay layout', () => {
   it('hq image has on-screen size', () => {
     const style = hqOverlayLayout(1, 2, 'miniature');
     const width = parseFloat(String(style.width));
+    const height = parseFloat(String(style.height));
     expect(width).toBeGreaterThan(8);
-    expect(style.aspectRatio).toBe(0.94);
+    expect(height).toBeGreaterThan(8);
   });
 
   it('brick container has explicit height', () => {

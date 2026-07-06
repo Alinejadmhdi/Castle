@@ -73,6 +73,7 @@ export function BuildingSpritesOverlay({
           source={BUILDING_STAGE_IMAGES[hqVisual.stageIndex]}
           style={hqOverlayLayout(plotScale, hqVisual.stageIndex, categoryType)}
           resizeMode="contain"
+          onError={(e) => console.warn('[Plot] HQ image error', hqVisual.stageIndex, e.nativeEvent.error)}
         />
       )}
       {monuments.map((building) => {
@@ -103,5 +104,6 @@ const styles = StyleSheet.create({
   layer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 3,
+    elevation: 6,
   },
 });

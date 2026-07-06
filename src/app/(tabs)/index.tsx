@@ -65,6 +65,18 @@ export default function LifeMapScreen() {
     }
   }, [isFocused, session?.status]);
 
+  useEffect(() => {
+    if (!isFocused) return;
+    for (const cat of categories) {
+      const expected = Math.floor(cat.totalBrickValue);
+      const loaded = scenes[cat.id]?.bricks?.length ?? 0;
+      if (expected > 0 && loaded < expected) {
+        void refreshCategory(cat.id);
+        break;
+      }
+    }
+  }, [isFocused, categories, scenes, refreshCategory]);
+
   const panelCategory = useMemo(() => {
     if (session) {
       return categories.find((c) => c.id === session.categoryId) ?? null;
