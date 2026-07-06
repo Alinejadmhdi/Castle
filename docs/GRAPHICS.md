@@ -75,12 +75,34 @@ Brick tap: `onClick` on mesh → `onBrickPress` callback (popover on category sc
 
 ---
 
-## Future Polish (not blocking MVP)
+## CoC Visual Layer (v0.1.22+)
 
-- GLB building models per macro stage
-- Instanced meshes for 1000+ bricks (LOD when zoomed out)
-- Shadow maps on native (currently directional lights only)
+| Layer | Implementation |
+|-------|----------------|
+| Buildings | `BuildingStageSprite` — one cropped PNG per stage in `assets/building-stages/` |
+| Source art | Four reference sheets in `assets/building-previews/` (regenerate with `npm run extract:building-stages`) |
+| Ground | `CoCTiledGround` — hand-painted tile textures in `assets/textures/` |
+| Bricks | `MeshToonMaterial` instanced wall (`BrickWallInstanced`) |
+| Lighting | `CoCLighting` — warm hemisphere + dual directional |
+| Scale | `spriteSizeScale()` in `cocPalette.ts` matches former procedural footprint |
+
+### How the 27 stages reach the map
+
+1. **Art** — four CoC-style sheets (`stages-0-6.png` … `stages-21-26.png`) hold all 27 buildings.
+2. **Extract** — `scripts/extract-building-stages.sh` crops each cell → `assets/building-stages/stage-00.png` … `stage-26.png`.
+3. **Register** — `BUILDING_STAGE_IMAGES` in `src/constants/buildingPreviewAssets.ts` (Metro `require()` paths).
+4. **Render** — `ProgressiveBuildingMesh` (center HQ) and `StageBuildingMesh` (ring monuments) pass `stageIndex` to `BuildingStageSprite`, which loads the PNG as a camera-facing billboard in Three.js.
+
+Procedural geometry (`CoCBuildingModel`) remains for fallback/previews only; Life Map uses sprites.
+
+---
+
+## Future Polish
+
+- GLB building models per macro stage (highest fidelity)
+- Shadow maps on native
 - Per-brick kiln reveal animation in 3D
+- Compress terrain tiles for smaller APK (~2–3 MB each today)
 
 ---
 

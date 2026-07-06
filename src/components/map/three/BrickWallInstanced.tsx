@@ -56,10 +56,8 @@ export function BrickWallInstanced({
   const geometry = useMemo(() => createBrickInstanceGeometry(), []);
   const material = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({
+      new THREE.MeshToonMaterial({
         vertexColors: true,
-        roughness: 0.85,
-        metalness: 0.05,
       }),
     [],
   );

@@ -1,4 +1,7 @@
 import { MAP_SKY_COLOR } from '@/rendering/three/constants';
+import { HQ_LAYOUT, hqStageSizeFactor } from '@/rendering/three/mapContentLayout';
+import { ringSpriteSizeScale } from '@/rendering/three/ringBuildingScale';
+import { stageArtSizeFactor } from '@/rendering/three/stageArtScale';
 
 /** Shared CoC palette — warm, saturated, no fog wash-out. */
 export const COC_COLORS = {
@@ -26,7 +29,7 @@ export const COC_COLORS = {
 } as const;
 
 /** Multiplier so HQ buildings fill the plot at CoC proportions. */
-export const BUILDING_VISUAL_SCALE = 12;
+export const BUILDING_VISUAL_SCALE = 18;
 
 /** Center HQ — fixed footprint regardless of stage or brick progress. */
 export const HQ_FIXED_VISUAL_SCALE = 0.36;
@@ -37,4 +40,33 @@ export const RING_MONUMENT_VISUAL_SCALE = 0.34;
 export function scaleSize(plotScale: number, miniature: boolean, value: number) {
   const mini = miniature ? 0.95 : 1;
   return value * plotScale * mini * BUILDING_VISUAL_SCALE;
+}
+
+/** Sprite billboard width factor — matches procedural building footprint. */
+export const SPRITE_BASE_WIDTH = { standard: 9.5, miniature: 5.5 } as const;
+
+/** @deprecated Use hqStageSizeFactor from mapContentLayout */
+export function spriteStageGrowth(stageIndex: number): number {
+  return hqStageSizeFactor(stageIndex) / HQ_LAYOUT.sizeFactorMax;
+}
+
+/** Scale multiplier for HQ sprite — gradient 0.8 → 3 by stage 16, then flat. */
+export function hqSpriteSizeScale(miniature = false, stageIndex = 0): number {
+  const footprint = HQ_FIXED_VISUAL_SCALE;
+  const baseWidth = miniature ? SPRITE_BASE_WIDTH.miniature : SPRITE_BASE_WIDTH.standard;
+  const base = (footprint * BUILDING_VISUAL_SCALE * 2.8) / baseWidth;
+  return base * hqStageSizeFactor(stageIndex) * stageArtSizeFactor(stageIndex);
+}
+
+/** Scale multiplier for sprite buildings — HQ vs ring use separate size factors. */
+export function spriteSizeScale(
+  forRing: boolean,
+  miniature = false,
+  stageIndex = 0,
+  currentHqStageIndex = 15,
+): number {
+  if (forRing) {
+    return ringSpriteSizeScale(miniature, stageIndex, currentHqStageIndex);
+  }
+  return hqSpriteSizeScale(miniature, stageIndex);
 }

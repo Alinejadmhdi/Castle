@@ -1,4 +1,5 @@
-import { plotSlotToWorld } from './settlementLayout';
+import { getGroundDimensions } from '@/rendering/three/gridToWorld';
+import { plotSlotToWorld } from '@/rendering/three/settlementLayout';
 
 export interface ForestTree {
   id: string;
@@ -24,66 +25,50 @@ export function getMapViewHalfExtent(groundHalf: number): number {
   return groundHalf * 1.55;
 }
 
+const TREE_SCALE_MULTIPLIER = 3;
+
 /**
- * Dense CoC-style pines in the forest ring and scattered on inner grass.
+ * Randomly scattered CoC pines — no ring/grid ordering.
  */
 export function generateForestTrees(plotScale: number, groundHalf: number): ForestTree[] {
-  const rng = seededRandom(Math.floor(plotScale * 10007));
+  const rng = seededRandom(Math.floor(plotScale * 10007 + groundHalf * 31));
   const trees: ForestTree[] = [];
   let id = 0;
 
   const add = (x: number, z: number, scale: number, kind: 'tree' | 'bush', variant: 0 | 1 | 2) => {
-    trees.push({ id: `t${id++}`, x, z, scale, kind, variant });
+    trees.push({
+      id: `t${id++}`,
+      x,
+      z,
+      scale: scale * TREE_SCALE_MULTIPLIER,
+      kind,
+      variant,
+    });
   };
 
-  const outerRingInner = groundHalf * 1.02;
-  const outerRingOuter = groundHalf * 1.48;
-  const ringCount = 140;
+  const extent = getMapViewHalfExtent(groundHalf);
+  const innerClear = groundHalf * 0.42;
+  const targetCount = 220;
 
-  for (let i = 0; i < ringCount; i++) {
-    const angle = (i / ringCount) * Math.PI * 2 + (rng() - 0.5) * 0.35;
-    const radius = outerRingInner + rng() * (outerRingOuter - outerRingInner);
+  for (let attempts = 0; attempts < targetCount * 8 && trees.length < targetCount; attempts++) {
+    const x = (rng() * 2 - 1) * extent * 0.98;
+    const z = (rng() * 2 - 1) * extent * 0.98;
+    const dist = Math.hypot(x, z);
+
+    if (dist < innerClear) continue;
+    if (dist > extent * 0.96) continue;
+
+    const edgeBias = (dist - innerClear) / (extent - innerClear);
+    const scale =
+      (0.22 + rng() * 0.38 + edgeBias * 0.18) * plotScale * (rng() > 0.82 ? 1.15 : 1);
+
     add(
-      Math.cos(angle) * radius,
-      Math.sin(angle) * radius,
-      (0.32 + rng() * 0.42) * plotScale,
-      rng() > 0.88 ? 'bush' : 'tree',
+      x + (rng() - 0.5) * plotScale * 0.6,
+      z + (rng() - 0.5) * plotScale * 0.6,
+      scale,
+      rng() > 0.86 ? 'bush' : 'tree',
       Math.floor(rng() * 3) as 0 | 1 | 2,
     );
-  }
-
-  const innerGrass = groundHalf * 0.48;
-  const innerCount = 72;
-  for (let i = 0; i < innerCount; i++) {
-    const angle = rng() * Math.PI * 2;
-    const radius = groundHalf * 0.55 + rng() * (innerGrass - groundHalf * 0.55);
-    add(
-      Math.cos(angle) * radius,
-      Math.sin(angle) * radius,
-      (0.28 + rng() * 0.35) * plotScale,
-      rng() > 0.9 ? 'bush' : 'tree',
-      Math.floor(rng() * 3) as 0 | 1 | 2,
-    );
-  }
-
-  const corners: [number, number][] = [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ];
-  for (const [sx, sz] of corners) {
-    for (let j = 0; j < 12; j++) {
-      const angle = Math.atan2(sz, sx) + (rng() - 0.5) * 0.85;
-      const radius = outerRingOuter * (0.92 + rng() * 0.18);
-      add(
-        Math.cos(angle) * radius,
-        Math.sin(angle) * radius,
-        (0.38 + rng() * 0.5) * plotScale,
-        'tree',
-        Math.floor(rng() * 3) as 0 | 1 | 2,
-      );
-    }
   }
 
   return trees;

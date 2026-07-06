@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import type { Brick, BuildingInstance, CategoryType } from '@/types';
-import { COC_COLORS } from './coc/cocPalette';
-import { getVisibleWallBricks } from '@/features/progression/progressionService';
+import { CoCLighting } from './coc/CoCLighting';
+import { getVisibleWallBricks, getStageForBrickValue } from '@/features/progression/progressionService';
 import { shouldDisplayPlotMonument } from '@/constants/monumentPersistence';
-import { layoutMonuments, getMaxMonumentFootprintRadius } from '@/rendering/three/settlementLayout';
+import { layoutMonuments } from '@/rendering/three/settlementLayout';
+import { MAP_SCENE_OFFSET } from '@/rendering/three/mapContentLayout';
 import { BrickWallInstanced } from './BrickWallInstanced';
 import { ProgressiveBuildingMesh } from './ProgressiveBuildingMesh';
 import { StageBuildingMesh } from './StageBuildingMesh';
-import { CoCMapEnvironment } from './CoCMapEnvironment';
 import { CameraRig } from './CameraRig';
 import { SceneInvalidator } from './SceneInvalidator';
 
@@ -39,36 +39,31 @@ export function SettlementScene3D({
     [bricks, totalBrickValue, categoryType],
   );
 
+  const currentHqStageIndex = useMemo(
+    () => getStageForBrickValue(totalBrickValue, categoryType).index,
+    [totalBrickValue, categoryType],
+  );
+
   const monuments = useMemo(
     () =>
       buildings
         .filter(
           (b) =>
-            isStageMonument(b.kind) && shouldDisplayPlotMonument(categoryType, b.stageKey),
+            isStageMonument(b.kind) &&
+            shouldDisplayPlotMonument(categoryType, b.stageKey, currentHqStageIndex),
         )
         .sort((a, b) => a.unlockedAt.localeCompare(b.unlockedAt)),
-    [buildings, categoryType],
+    [buildings, categoryType, currentHqStageIndex],
   );
 
-  const monumentLayout = useMemo(() => layoutMonuments(monuments), [monuments]);
-
-  const treeClearRadius = useMemo(
-    () => Math.max(4, getMaxMonumentFootprintRadius(monuments) * 0.55),
-    [monuments],
-  );
-
-  const buildingSlots = useMemo(
-    () => [...monumentLayout.values()],
-    [monumentLayout],
+  const monumentLayout = useMemo(
+    () => layoutMonuments(monuments, currentHqStageIndex, plotScale),
+    [monuments, currentHqStageIndex, plotScale],
   );
 
   return (
     <>
-      <color attach="background" args={[COC_COLORS.wilderness]} />
-      <ambientLight intensity={0.55} color="#fff5e6" />
-      <hemisphereLight args={['#3a9a2a', COC_COLORS.grassDark, 0.38]} />
-      <directionalLight position={[16, 24, 12]} intensity={1.45} color="#fff0c8" />
-      <directionalLight position={[-10, 14, -8]} intensity={0.2} color="#e8f0e0" />
+      <CoCLighting />
 
       <CameraRig plotScale={plotScale} />
 
@@ -78,38 +73,41 @@ export function SettlementScene3D({
         totalBrickValue={totalBrickValue}
       />
 
-      <CoCMapEnvironment
-        plotScale={plotScale}
-        buildingSlots={buildingSlots}
-        treeClearRadius={treeClearRadius}
-      />
+      <group
+        position={[
+          plotScale * MAP_SCENE_OFFSET.x,
+          0,
+          plotScale * MAP_SCENE_OFFSET.z,
+        ]}
+      >
+        <ProgressiveBuildingMesh
+          totalBrickValue={totalBrickValue}
+          categoryType={categoryType}
+          plotScale={plotScale}
+        />
 
-      <ProgressiveBuildingMesh
-        totalBrickValue={totalBrickValue}
-        categoryType={categoryType}
-        plotScale={plotScale}
-      />
+        {monuments.map((building) => {
+          const slot = monumentLayout.get(building.id);
+          if (!slot) return null;
+          return (
+            <StageBuildingMesh
+              key={building.id}
+              building={building}
+              plotScale={plotScale}
+              plotX={slot.plotX}
+              plotY={slot.plotY}
+              currentHqStageIndex={currentHqStageIndex}
+            />
+          );
+        })}
 
-      {monuments.map((building) => {
-        const slot = monumentLayout.get(building.id);
-        if (!slot) return null;
-        return (
-          <StageBuildingMesh
-            key={building.id}
-            building={building}
-            plotScale={plotScale}
-            plotX={slot.plotX}
-            plotY={slot.plotY}
-          />
-        );
-      })}
-
-      <BrickWallInstanced
-        bricks={wallBricks}
-        plotScale={plotScale}
-        highlightBrickId={highlightBrickId}
-        onPress={onBrickPress}
-      />
+        <BrickWallInstanced
+          bricks={wallBricks}
+          plotScale={plotScale}
+          highlightBrickId={highlightBrickId}
+          onPress={onBrickPress}
+        />
+      </group>
     </>
   );
 }

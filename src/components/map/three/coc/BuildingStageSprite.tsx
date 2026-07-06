@@ -1,80 +1,69 @@
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo } from 'react';
 import { useLoader } from '@react-three/fiber';
 import { Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CategoryType } from '@/types';
-import {
-  getBuildingPreviewSheetUris,
-  getPreviewSheetSlice,
-} from '@/rendering/three/buildingPreviewTextures';
-import { COC_COLORS } from './cocPalette';
+import { getBuildingStageUri } from '@/rendering/three/buildingPreviewTextures';
 
-interface BuildingStageSpriteProps {
+export interface BuildingStageSpriteProps {
   stageIndex: number;
   categoryType: CategoryType;
   plotScale: number;
+  /** Footprint multiplier — use spriteSizeScale() from cocPalette. */
+  sizeScale?: number;
+  /** Lower on screen when true (center HQ). */
+  anchorLow?: boolean;
+  /** Isometric depth sort — higher draws on top of lower. */
+  renderOrder?: number;
 }
 
-function sliceTexture(base: THREE.Texture, localIndex: number, cols: number) {
-  const tex = base.clone();
-  const cellW = 1 / cols;
-  tex.repeat.set(cellW * 0.9, 0.82);
-  tex.offset.set(localIndex * cellW + cellW * 0.05, 0.09);
-  tex.wrapS = THREE.ClampToEdgeWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  if ('colorSpace' in tex) {
-    tex.colorSpace = THREE.SRGBColorSpace;
-  }
-  tex.needsUpdate = true;
-  return tex;
-}
-
-let cachedSheetUris: string[] | null = null;
-
-function getSheetUris() {
-  if (!cachedSheetUris) {
-    cachedSheetUris = getBuildingPreviewSheetUris();
-  }
-  return cachedSheetUris;
-}
-
-/** CoC reference art as a camera-facing sprite with a soft ground shadow. */
+/** CoC building cutout — transparent PNG billboard, no ground pad beneath. */
 export function BuildingStageSprite({
   stageIndex,
   categoryType,
   plotScale,
+  sizeScale = 1,
+  anchorLow = false,
+  renderOrder = 1,
 }: BuildingStageSpriteProps) {
-  const { sheetIndex, localIndex, cols } = getPreviewSheetSlice(stageIndex, categoryType);
-  const sheetUris = getSheetUris();
-  const textures = useLoader(THREE.TextureLoader, sheetUris);
-  const sheet = textures[sheetIndex];
+  const uri = getBuildingStageUri(stageIndex);
+  const texture = useLoader(THREE.TextureLoader, uri);
 
-  const map = useMemo(
-    () => sliceTexture(sheet, localIndex, cols),
-    [sheet, localIndex, cols],
-  );
+  useLayoutEffect(() => {
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    if ('colorSpace' in texture) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+    }
+    texture.needsUpdate = true;
+  }, [texture]);
+
+  const aspect = useMemo(() => {
+    const img = texture.image as { width?: number; height?: number } | undefined;
+    if (img?.width && img?.height) return img.height / img.width;
+    return 0.94;
+  }, [texture]);
 
   const miniature = categoryType === 'miniature';
-  const width = plotScale * (miniature ? 5.5 : 9.5);
-  const height = width * 0.92;
-  const y = height * 0.42;
+  const baseWidth = miniature ? 5.5 : 9.5;
+  const width = plotScale * baseWidth * sizeScale;
+  const height = width * aspect;
+  const anchor = anchorLow ? 0.34 : 0.4;
+  const y = height * anchor;
 
   return (
-    <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
-        <circleGeometry args={[width * 0.28, 28]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.22} />
+    <Billboard position={[0, y, 0]} follow>
+      <mesh renderOrder={renderOrder}>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial
+          map={texture}
+          transparent
+          alphaTest={0.04}
+          toneMapped={false}
+          depthWrite={false}
+          depthTest={false}
+        />
       </mesh>
-      <mesh position={[0, 0.06, 0]}>
-        <boxGeometry args={[width * 0.55, 0.1, width * 0.55]} />
-        <meshStandardMaterial color={COC_COLORS.dirt} roughness={1} />
-      </mesh>
-      <Billboard position={[0, y, 0]} follow>
-        <mesh renderOrder={2}>
-          <planeGeometry args={[width, height]} />
-          <meshBasicMaterial map={map} transparent alphaTest={0.08} toneMapped={false} />
-        </mesh>
-      </Billboard>
-    </group>
+    </Billboard>
   );
 }

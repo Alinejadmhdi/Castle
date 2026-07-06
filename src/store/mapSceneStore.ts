@@ -35,6 +35,27 @@ interface MapSceneState {
 const refreshInFlight = new Map<string, Promise<void>>();
 const loadInFlight = new Map<string, Promise<void>>();
 const syncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** Categories whose scene has been hydrated from SQLite at least once. */
+const hydratedIds = new Set<string>();
+
+function mergeSceneData(
+  fromDb: { bricks: Brick[]; buildings: BuildingInstance[] },
+  current?: { bricks: Brick[]; buildings: BuildingInstance[] },
+): { bricks: Brick[]; buildings: BuildingInstance[] } {
+  const base = current ?? { bricks: [], buildings: [] };
+  const brickMap = new Map(fromDb.bricks.map((b) => [b.id, b]));
+  for (const brick of base.bricks) {
+    if (!brickMap.has(brick.id)) brickMap.set(brick.id, brick);
+  }
+  const buildingMap = new Map(fromDb.buildings.map((b) => [b.id, b]));
+  for (const building of base.buildings) {
+    if (!buildingMap.has(building.id)) buildingMap.set(building.id, building);
+  }
+  return {
+    bricks: [...brickMap.values()],
+    buildings: [...buildingMap.values()],
+  };
+}
 
 export const useMapSceneStore = create<MapSceneState>((set, get) => ({
   scenes: {},
@@ -48,7 +69,7 @@ export const useMapSceneStore = create<MapSceneState>((set, get) => ({
   },
 
   async loadCategory(categoryId) {
-    if (get().scenes[categoryId]) return;
+    if (hydratedIds.has(categoryId)) return;
 
     const existing = loadInFlight.get(categoryId);
     if (existing) return existing;
@@ -67,10 +88,15 @@ export const useMapSceneStore = create<MapSceneState>((set, get) => ({
         }
         const bricks = await getBricksByCategory(categoryId);
         const buildings = await relayoutCategoryMonuments(categoryId, category.type);
-        set((state) => ({
-          scenes: { ...state.scenes, [categoryId]: { bricks, buildings } },
-          loadingIds: { ...state.loadingIds, [categoryId]: false },
-        }));
+        hydratedIds.add(categoryId);
+        set((state) => {
+          const current = state.scenes[categoryId];
+          const merged = mergeSceneData({ bricks, buildings }, current);
+          return {
+            scenes: { ...state.scenes, [categoryId]: merged },
+            loadingIds: { ...state.loadingIds, [categoryId]: false },
+          };
+        });
       } catch (error) {
         console.error('loadCategory failed:', categoryId, error);
         set((state) => ({
@@ -191,6 +217,7 @@ export const useMapSceneStore = create<MapSceneState>((set, get) => ({
   removeCategory(categoryId) {
     refreshInFlight.delete(categoryId);
     loadInFlight.delete(categoryId);
+    hydratedIds.delete(categoryId);
     const timer = syncTimers.get(categoryId);
     if (timer) clearTimeout(timer);
     syncTimers.delete(categoryId);
@@ -204,6 +231,7 @@ export const useMapSceneStore = create<MapSceneState>((set, get) => ({
   clearAll() {
     refreshInFlight.clear();
     loadInFlight.clear();
+    hydratedIds.clear();
     for (const timer of syncTimers.values()) clearTimeout(timer);
     syncTimers.clear();
     set({ scenes: {}, loadingIds: {} });

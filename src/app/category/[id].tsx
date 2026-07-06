@@ -6,7 +6,6 @@ import { getBricksByCategory } from '@/services/database/brickRepository';
 import { getBuildingsByCategory } from '@/services/database/buildingRepository';
 import { getDailyBuild } from '@/services/database/buildingRepository';
 import { MACRO_BUILDING_STAGES } from '@/constants/buildings';
-import { MINIATURE_BUILDING_STAGES, MINIATURE_SCALE } from '@/constants/miniatureBuildings';
 import type { Brick, BuildingInstance, Category, DailyBuild } from '@/types';
 import { SettlementPlot } from '@/components/map/SettlementPlot';
 import { BrickPopover } from '@/components/brick/BrickPopover';
@@ -44,7 +43,7 @@ export default function CategoryDetailScreen() {
     );
   }
 
-  const stages = category.type === 'miniature' ? MINIATURE_BUILDING_STAGES : MACRO_BUILDING_STAGES;
+  const stages = MACRO_BUILDING_STAGES;
   const stage = stages[category.currentStageIndex];
 
   return (
@@ -57,7 +56,7 @@ export default function CategoryDetailScreen() {
       <SettlementPlot
         bricks={bricks}
         buildings={buildings}
-        scale={category.type === 'miniature' ? MINIATURE_SCALE : 1}
+        scale={1}
         totalBrickValue={category.totalBrickValue}
         categoryType={category.type}
         wallColor={category.defaultColor}

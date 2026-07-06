@@ -5,11 +5,12 @@ import { useCelebrationStore } from '@/store/celebrationStore';
 import { todayLocalDate } from '@/utils';
 
 /** Seals open daily builds when the calendar day changes or app returns to foreground. */
-export function useDailySeal() {
+export function useDailySeal(enabled = true) {
   const lastDateRef = useRef(todayLocalDate());
   const sealingRef = useRef(false);
 
   useEffect(() => {
+    if (!enabled) return;
     async function runSeal() {
       if (sealingRef.current) return;
       sealingRef.current = true;
@@ -38,5 +39,5 @@ export function useDailySeal() {
     void runSeal();
     const sub = AppState.addEventListener('change', onStateChange);
     return () => sub.remove();
-  }, []);
+  }, [enabled]);
 }

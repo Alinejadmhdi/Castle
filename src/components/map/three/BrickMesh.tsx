@@ -35,12 +35,10 @@ export function BrickMesh({ brick, plotScale, highlighted, onPress }: BrickMeshP
       }}
     >
       <boxGeometry args={[w, h, d]} />
-      <meshStandardMaterial
+      <meshToonMaterial
         color={resolveBrickDisplayColor(brick.color)}
         emissive={highlighted ? '#ffffff' : brick.streakRewardLabel ? '#c9a227' : '#000000'}
         emissiveIntensity={highlighted ? 0.35 : brick.streakRewardLabel ? 0.2 : 0}
-        roughness={0.85}
-        metalness={0.05}
       />
     </mesh>
   );

@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+unset npm_config_prefix
 if [[ -f "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck disable=SC1091
   source "$HOME/.nvm/nvm.sh"
@@ -21,8 +22,13 @@ export NODE_ENV=production
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 
 VERSION="$(node -p "require('./package.json').version")"
-VERSION_CODE="$(node -p "parseInt(require('./package.json').version.split('.')[2]||'0',10)||1")"
+VERSION_CODE="$(node -p "(() => { const p=require('./package.json').version.split('.').map(Number); return p[0]*10000+p[1]*100+p[2]; })()")"
 APK_NAME="Castle-v${VERSION}.apk"
+GRADLE_BIN="${GRADLE_BIN:-$HOME/.gradle/wrapper/dists/gradle-8.14.3-bin/cv11ve7ro1n3o1j4so8xd9n66/gradle-8.14.3/bin/gradle}"
+
+# Drop stale Metro bundle so release always picks up latest JS.
+rm -rf "$ROOT/android/app/build/generated/assets/createBundleReleaseJsAndAssets" \
+  "$ROOT/android/app/build/intermediates/sourcemaps" 2>/dev/null || true
 
 if [[ ! -d "$ANDROID_HOME" ]]; then
   echo "Android SDK not found at $ANDROID_HOME"
@@ -41,17 +47,31 @@ if [[ -f "$ROOT/android/app/build.gradle" ]]; then
 fi
 
 ARCH="${1:-arm64-v8a}"
+CLEAN="${CLEAN:-0}"
 LOG="$ROOT/build-apk.log"
 
-echo "Building release APK v${VERSION} (arch=$ARCH)…"
+echo "Building release APK v${VERSION} (arch=$ARCH, clean=$CLEAN)…"
 echo "Log: $LOG"
 
+GRADLE_TASKS=(assembleRelease)
+if [[ "$CLEAN" == "1" ]]; then
+  GRADLE_TASKS=(clean "${GRADLE_TASKS[@]}")
+fi
+
 cd "$ROOT/android"
-./gradlew assembleRelease \
-  --init-script "$ROOT/scripts/android-mirror-init.gradle" \
-  -PreactNativeArchitectures="$ARCH" \
-  --no-daemon \
-  2>&1 | tee "$LOG"
+if [[ -x "$GRADLE_BIN" ]]; then
+  "$GRADLE_BIN" "${GRADLE_TASKS[@]}" \
+    --init-script "$ROOT/scripts/android-mirror-init.gradle" \
+    -PreactNativeArchitectures="$ARCH" \
+    --no-daemon \
+    2>&1 | tee "$LOG"
+else
+  ./gradlew "${GRADLE_TASKS[@]}" \
+    --init-script "$ROOT/scripts/android-mirror-init.gradle" \
+    -PreactNativeArchitectures="$ARCH" \
+    --no-daemon \
+    2>&1 | tee "$LOG"
+fi
 
 APK="$ROOT/android/app/build/outputs/apk/release/app-release.apk"
 if [[ -f "$APK" ]]; then

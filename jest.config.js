@@ -5,5 +5,6 @@ module.exports = {
   roots: ['<rootDir>/__tests__'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '\\.(png|jpg|jpeg|gif|webp)$': '<rootDir>/test-utils/fileMock.js',
   },
 };

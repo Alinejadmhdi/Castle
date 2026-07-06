@@ -23,15 +23,19 @@ import {
 } from '@/services/database/brickRepository';
 import { withDbWrite } from '@/services/database/dbQueue';
 import {
+  deleteBuildingInstance,
   getOrCreateDailyBuild,
   insertBuildingInstance,
   getBuildingsByCategory,
   getSubBuildingsByKey,
   updateDailyBuild,
 } from '@/services/database/buildingRepository';
-import { getMonumentPlotSlot } from '@/rendering/three/settlementLayout';
+import { getMonumentPlotSlot, getEarlyRingSlot } from '@/rendering/three/settlementLayout';
 import {
   CENTER_WALL_ABSORBER_KEY,
+  EARLY_REPLACE_MAX_STAGE_INDEX,
+  isEarlyReplaceMonumentStage,
+  MONUMENT_PERSIST_FROM_STAGE_INDEX,
   shouldPersistStageMonument,
 } from '@/constants/monumentPersistence';
 import { getCategoryById, incrementCategoryAfterBrick } from '@/services/database/repositories';
@@ -73,6 +77,8 @@ async function createMacroBuildingInstance(
       scale,
       isMiniature,
       stageIndex,
+      1,
+      category.currentStageIndex,
     );
   const building: BuildingInstance = {
     id: generateId(),
@@ -91,6 +97,74 @@ async function createMacroBuildingInstance(
   };
   await insertBuildingInstance(building);
   return building;
+}
+
+function getStageIndexForKey(
+  stageKey: string,
+  isMiniature: boolean,
+): number {
+  const stages = isMiniature ? MINIATURE_BUILDING_STAGES : MACRO_BUILDING_STAGES;
+  return stages.find((s) => s.key === stageKey)?.index ?? -1;
+}
+
+async function removeEarlyMonuments(
+  categoryId: string,
+  monumentKind: BuildingInstance['kind'],
+  isMiniature: boolean,
+): Promise<void> {
+  const existing = await getBuildingsByCategory(categoryId);
+  const toRemove = existing.filter(
+    (b) =>
+      b.kind === monumentKind &&
+      isEarlyReplaceMonumentStage(getStageIndexForKey(b.stageKey, isMiniature)),
+  );
+  await Promise.all(toRemove.map((b) => deleteBuildingInstance(b.id)));
+}
+
+async function upsertEarlyMonument(
+  category: Category,
+  completedStageIndex: number,
+  monumentKind: BuildingInstance['kind'],
+  absorbedIds: string[],
+  brickId: string,
+): Promise<BuildingInstance | null> {
+  const isMiniature = category.type === 'miniature';
+  const stages = isMiniature ? MINIATURE_BUILDING_STAGES : MACRO_BUILDING_STAGES;
+  const completedStage = stages[completedStageIndex];
+  if (!completedStage) return null;
+
+  await removeEarlyMonuments(category.id, monumentKind, isMiniature);
+
+  const categoryBricks = await getBricksByCategory(category.id);
+  const stageBricks =
+    absorbedIds.length > 0
+      ? absorbedIds
+      : categoryBricks
+          .filter(
+            (b) =>
+              b.id !== brickId &&
+              b.stageIndex === completedStageIndex &&
+              b.buildingInstanceId == null,
+          )
+          .map((b) => b.id);
+
+  const instance = await createMacroBuildingInstance(
+    category,
+    completedStage.key,
+    completedStage.name,
+    monumentKind,
+    stageBricks,
+    completedStage.cumulativeBricks,
+    0,
+    isMiniature ? MINIATURE_SCALE : 1,
+    [],
+    getEarlyRingSlot(1, category.currentStageIndex),
+  );
+
+  if (stageBricks.length > 0) {
+    await assignBricksToBuilding(stageBricks, instance.id);
+  }
+  return instance;
 }
 
 async function getOrCreateCenterAbsorber(category: Category): Promise<BuildingInstance> {
@@ -317,32 +391,75 @@ async function addBrickToCategoryLocked(
     const stage = unlockedStage;
     const completedStageIndex = unlockedStage.index - 1;
     const monumentKind = category.type === 'miniature' ? 'miniature' : 'macro';
+    const isMiniature = category.type === 'miniature';
 
-    if (shouldPersistStageMonument(category.type, unlockedStage.index)) {
+    if (unlockedStage.index === MONUMENT_PERSIST_FROM_STAGE_INDEX) {
+      await removeEarlyMonuments(category.id, monumentKind, isMiniature);
+    }
+
+    const shouldReplaceEarly =
+      completedStageIndex >= 0 &&
+      completedStageIndex <= EARLY_REPLACE_MAX_STAGE_INDEX &&
+      unlockedStage.index < MONUMENT_PERSIST_FROM_STAGE_INDEX;
+
+    if (shouldReplaceEarly) {
+      const categoryBricks = await getBricksByCategory(categoryId);
+      const absorbedBricks = categoryBricks.filter(
+        (b) =>
+          b.id !== brick.id &&
+          b.stageIndex === completedStageIndex &&
+          b.buildingInstanceId == null,
+      );
+      const absorbedIds = absorbedBricks.map((b) => b.id);
+
+      const instance = await upsertEarlyMonument(
+        category,
+        completedStageIndex,
+        monumentKind,
+        absorbedIds,
+        brick.id,
+      );
+
+      if (completedStageIndex >= 0) {
+        await absorbCompletedStageWallBricks(categoryId, category, completedStageIndex);
+      }
+
+      unlocks.push({
+        type: isMiniature ? 'miniature' : 'macro',
+        buildingInstance: instance ?? undefined,
+        stageKey: stage.key,
+        stageName: stage.name,
+        cumulativeBricks: stage.cumulativeBricks,
+        categoryBrickTotal: newValue,
+      });
+    } else if (shouldPersistStageMonument(category.type, unlockedStage.index)) {
       const categoryBricks = await getBricksByCategory(categoryId);
       const existingMonuments = (await getBuildingsByCategory(categoryId)).filter(
         (b) => b.kind === monumentKind,
       );
 
-      if (!existingMonuments.some((b) => b.stageKey === stage.key)) {
-        const absorbedBricks =
-          completedStageIndex >= 0
-            ? categoryBricks.filter(
-                (b) =>
-                  b.id !== brick.id &&
-                  b.stageIndex === completedStageIndex &&
-                  b.buildingInstanceId == null,
-              )
-            : [];
+      const completedStage =
+        completedStageIndex >= 0 ? stages[completedStageIndex] : null;
+
+      if (
+        completedStage &&
+        !existingMonuments.some((b) => b.stageKey === completedStage.key)
+      ) {
+        const absorbedBricks = categoryBricks.filter(
+          (b) =>
+            b.id !== brick.id &&
+            b.stageIndex === completedStageIndex &&
+            b.buildingInstanceId == null,
+        );
         const absorbedIds = absorbedBricks.map((b) => b.id);
 
         const instance = await createMacroBuildingInstance(
           category,
-          stage.key,
-          stage.name,
+          completedStage.key,
+          completedStage.name,
           monumentKind,
           absorbedIds,
-          stage.cumulativeBricks,
+          completedStage.cumulativeBricks,
           0,
           category.type === 'miniature' ? MINIATURE_SCALE : 1,
         );
@@ -353,9 +470,9 @@ async function addBrickToCategoryLocked(
         unlocks.push({
           type: category.type === 'miniature' ? 'miniature' : 'macro',
           buildingInstance: instance,
-          stageKey: stage.key,
-          stageName: stage.name,
-          cumulativeBricks: stage.cumulativeBricks,
+          stageKey: completedStage.key,
+          stageName: completedStage.name,
+          cumulativeBricks: completedStage.cumulativeBricks,
           categoryBrickTotal: newValue,
         });
       } else {
@@ -456,23 +573,32 @@ export async function completeSessionBricks(
   return addBrickToCategory(session.categoryId, session.brickColor, brickValue, session.id, false);
 }
 
-export async function logMiniatureResist(categoryId: string): Promise<BrickCreationResult> {
+export async function logResistBrick(categoryId: string): Promise<BrickCreationResult> {
   const category = await getCategoryById(categoryId).then(
     (row) => row ?? waitForCategory(categoryId),
   );
-  if (category.type !== 'miniature') {
-    throw new Error(
-      `Not a miniature category (type=${category.type}). Create as "Miniature (temptation)" to use Log Resist.`,
-    );
-  }
-  return addBrickToCategory(categoryId, category.defaultColor, 1, null, true);
+  const isMiniature = category.type === 'miniature';
+  return addBrickToCategory(categoryId, category.defaultColor, 1, null, isMiniature);
 }
 
+/** @deprecated Use logResistBrick */
+export async function logMiniatureResist(categoryId: string): Promise<BrickCreationResult> {
+  return logResistBrick(categoryId);
+}
+
+export async function logResistBrickWithRetry(
+  categoryId: string,
+  maxAttempts = 8,
+): Promise<BrickCreationResult> {
+  return withDbRetry(() => logResistBrick(categoryId), maxAttempts);
+}
+
+/** @deprecated Use logResistBrickWithRetry */
 export async function logMiniatureResistWithRetry(
   categoryId: string,
   maxAttempts = 8,
 ): Promise<BrickCreationResult> {
-  return withDbRetry(() => logMiniatureResist(categoryId), maxAttempts);
+  return logResistBrickWithRetry(categoryId, maxAttempts);
 }
 
 export async function sealDailyBuild(categoryId: string, date: string): Promise<UnlockEvent | null> {

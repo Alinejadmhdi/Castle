@@ -1,8 +1,18 @@
 import resolveAssetSource from 'react-native/Libraries/Image/resolveAssetSource';
 import type { CategoryType } from '@/types';
-import { BUILDING_PREVIEW_SHEETS } from '@/constants/buildingPreviewAssets';
+import {
+  BUILDING_PREVIEW_SHEETS,
+  BUILDING_STAGE_COUNT,
+  BUILDING_STAGE_IMAGES,
+  normalizeStageIndex,
+} from '@/constants/buildingPreviewAssets';
 
-export { BUILDING_PREVIEW_SHEETS };
+export {
+  BUILDING_PREVIEW_SHEETS,
+  BUILDING_STAGE_COUNT,
+  BUILDING_STAGE_IMAGES,
+  normalizeStageIndex,
+};
 
 export interface PreviewSheetSlice {
   sheetIndex: number;
@@ -29,12 +39,18 @@ function resolvePreviewUri(module: AssetModule): string {
   throw new Error('Unable to resolve building preview asset URI');
 }
 
-/** Map macro/mini stage index to a cell on the reference art sheets. */
+/** URI for a single cropped stage PNG (Life Map sprites). */
+export function getBuildingStageUri(stageIndex: number): string {
+  const idx = normalizeStageIndex(stageIndex);
+  return resolvePreviewUri(BUILDING_STAGE_IMAGES[idx]);
+}
+
+/** @deprecated Sheet slicing — prefer getBuildingStageUri for map rendering. */
 export function getPreviewSheetSlice(
   stageIndex: number,
-  categoryType: CategoryType,
+  _categoryType: CategoryType,
 ): PreviewSheetSlice {
-  const idx = stageIndex;
+  const idx = normalizeStageIndex(stageIndex);
 
   if (idx <= 6) return { sheetIndex: 0, localIndex: idx, cols: 7 };
   if (idx <= 13) return { sheetIndex: 1, localIndex: idx - 7, cols: 7 };
@@ -45,4 +61,9 @@ export function getPreviewSheetSlice(
 /** Resolved URIs for Three.js loaders (Expo web + native). */
 export function getBuildingPreviewSheetUris(): string[] {
   return BUILDING_PREVIEW_SHEETS.map((module) => resolvePreviewUri(module));
+}
+
+/** All 27 stage URIs — preload in Suspense boundary if needed. */
+export function getAllBuildingStageUris(): string[] {
+  return BUILDING_STAGE_IMAGES.map((module) => resolvePreviewUri(module));
 }

@@ -7,8 +7,8 @@ import {
   GROUND_WIDTH_FACTOR,
   GRID_COLUMNS,
   SOIL_GRID_COLUMNS,
-  SOIL_PAD_FRACTION,
 } from './constants';
+import { SOIL_PAD_SCALE, WALL_LAYOUT, HQ_LAYOUT } from './mapContentLayout';
 
 export interface WorldPosition {
   x: number;
@@ -27,13 +27,13 @@ export function getGroundDimensions(plotScale = 1) {
 
 export function getSoilDimensions(plotScale = 1) {
   const { width: groundW } = getGroundDimensions(plotScale);
-  const side = groundW * SOIL_PAD_FRACTION;
+  const side = groundW * SOIL_PAD_SCALE;
   return { side, half: side / 2 };
 }
 
 /**
- * Maps grid to 3D on the back-left corner of the soil pad.
- * gridX runs along the back border; gridY stacks courses upward.
+ * Maps grid to 3D on the inner grass diamond.
+ * gridX runs along the wall; gridY stacks courses upward.
  */
 export function gridToWorldPosition(
   gridX: number,
@@ -51,9 +51,16 @@ export function gridToWorldPosition(
   const brickW = w * frac;
 
   const { half } = getSoilDimensions(plotScale);
-  const originX = -half + gap + brickW / 2;
+  const originX = -half + gap + brickW / 2 + WALL_LAYOUT.offsetX * plotScale;
+
   const x = originX + gridX * cellW;
-  const z = -half + gap + d / 2;
+  const baseZ =
+    WALL_LAYOUT.edge === 'front'
+      ? half - gap - d / 2 + WALL_LAYOUT.offsetZ * plotScale
+      : -half + gap + d / 2 + WALL_LAYOUT.offsetZ * plotScale;
+  const hqZ = HQ_LAYOUT.worldZ * plotScale;
+  const distFromHq = baseZ - hqZ;
+  const z = hqZ + distFromHq * WALL_LAYOUT.distanceFromHqMultiplier;
   const y = 0.04 + gridY * (h + gap) + h / 2;
 
   return { x, y, z, scaleX: frac };

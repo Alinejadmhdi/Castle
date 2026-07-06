@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { MAP_SKY_COLOR } from '@/rendering/three/constants';
+import { MapBackgroundImage } from './MapBackgroundImage';
 
 interface MapPlotPlaceholderProps {
   height?: number;
@@ -7,10 +7,12 @@ interface MapPlotPlaceholderProps {
   square?: boolean;
 }
 
-/** Static placeholder while the GL canvas is unmounted (e.g. another tab is active). */
+/** Static map preview while the GL canvas is unmounted. */
 export function MapPlotPlaceholder({ height = 420, square = false }: MapPlotPlaceholderProps) {
   return (
-    <View style={[styles.placeholder, square ? styles.square : { height }]} />
+    <View style={[styles.placeholder, square ? styles.square : { height }]}>
+      <MapBackgroundImage />
+    </View>
   );
 }
 
@@ -18,7 +20,8 @@ const styles = StyleSheet.create({
   placeholder: {
     width: '100%',
     borderRadius: 12,
-    backgroundColor: MAP_SKY_COLOR,
+    overflow: 'hidden',
+    backgroundColor: '#4a9238',
   },
   square: {
     aspectRatio: 1,

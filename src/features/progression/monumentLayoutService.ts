@@ -1,6 +1,8 @@
 import type { BuildingInstance, CategoryType } from '@/types';
 import { CENTER_WALL_ABSORBER_KEY, shouldDisplayPlotMonument } from '@/constants/monumentPersistence';
+import { getStageForBrickValue } from '@/features/progression/progressionService';
 import { reconcileMonumentLayout } from '@/rendering/three/settlementLayout';
+import { getCategoryById } from '@/services/database/repositories';
 import {
   deleteBuildingInstance,
   getBuildingsByCategory,
@@ -18,9 +20,15 @@ export async function relayoutCategoryMonuments(
   categoryId: string,
   categoryType: CategoryType,
 ): Promise<BuildingInstance[]> {
+  const category = await getCategoryById(categoryId);
+  const currentStageIndex = category
+    ? getStageForBrickValue(category.totalBrickValue, categoryType).index
+    : 26;
   const buildings = await getBuildingsByCategory(categoryId);
   const monuments = buildings.filter(
-    (b) => isPlotMonument(b) && shouldDisplayPlotMonument(categoryType, b.stageKey),
+    (b) =>
+      isPlotMonument(b) &&
+      shouldDisplayPlotMonument(categoryType, b.stageKey, currentStageIndex),
   );
 
   if (monuments.length === 0) return buildings;
@@ -39,7 +47,7 @@ export async function relayoutCategoryMonuments(
         .map((b) => deleteBuildingInstance(b.id)),
     );
 
-    const layout = reconcileMonumentLayout(kept);
+    const layout = reconcileMonumentLayout(kept, currentStageIndex);
     await Promise.all(
       kept.map(async (building) => {
         const slot = layout.get(building.id);

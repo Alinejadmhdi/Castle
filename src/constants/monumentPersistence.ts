@@ -5,11 +5,17 @@ import { MINIATURE_BUILDING_STAGES } from './miniatureBuildings';
 /** Hidden record — absorbs wall bricks when a stage completes (not shown on plot). */
 export const CENTER_WALL_ABSORBER_KEY = 'center_absorber';
 
-/** Miniature: same monument threshold as standard — Hut (stage 9) onward. */
-export const MINIATURE_MONUMENT_FROM_STAGE_INDEX = 9;
+/** Permanent ring monuments from Garden Enclosure (stage 6) onward. */
+export const MONUMENT_PERSIST_FROM_STAGE_INDEX = 6;
 
-/** Standard: keep monuments from Hut (stage 9) onward — first structure after wall tiers. */
-export const MACRO_MONUMENT_FROM_STAGE_INDEX = 9;
+/** Stages 0–5 share one replaceable ring slot before stage 6. */
+export const EARLY_REPLACE_MAX_STAGE_INDEX = 5;
+
+/** @deprecated Use MONUMENT_PERSIST_FROM_STAGE_INDEX */
+export const MINIATURE_MONUMENT_FROM_STAGE_INDEX = MONUMENT_PERSIST_FROM_STAGE_INDEX;
+
+/** @deprecated Use MONUMENT_PERSIST_FROM_STAGE_INDEX */
+export const MACRO_MONUMENT_FROM_STAGE_INDEX = MONUMENT_PERSIST_FROM_STAGE_INDEX;
 
 export function getMonumentStartStageIndex(categoryType: CategoryType): number {
   return categoryType === 'miniature'
@@ -17,22 +23,32 @@ export function getMonumentStartStageIndex(categoryType: CategoryType): number {
     : MACRO_MONUMENT_FROM_STAGE_INDEX;
 }
 
+export function isEarlyReplaceMonumentStage(stageIndex: number): boolean {
+  return stageIndex >= 0 && stageIndex <= EARLY_REPLACE_MAX_STAGE_INDEX;
+}
+
 /** Whether a completed stage unlock should spawn a permanent plot monument. */
 export function shouldPersistStageMonument(
-  categoryType: CategoryType,
+  _categoryType: CategoryType,
   unlockedStageIndex: number,
 ): boolean {
-  return unlockedStageIndex >= getMonumentStartStageIndex(categoryType);
+  return unlockedStageIndex >= MONUMENT_PERSIST_FROM_STAGE_INDEX;
 }
 
 export function shouldDisplayPlotMonument(
   categoryType: CategoryType,
   stageKey: string,
+  currentStageIndex: number,
 ): boolean {
   if (stageKey === CENTER_WALL_ABSORBER_KEY) return false;
   const stages =
     categoryType === 'miniature' ? MINIATURE_BUILDING_STAGES : MACRO_BUILDING_STAGES;
   const stage = stages.find((s) => s.key === stageKey);
   if (!stage) return true;
-  return stage.index >= getMonumentStartStageIndex(categoryType);
+  if (stage.index === currentStageIndex) return false;
+  if (stage.index >= MONUMENT_PERSIST_FROM_STAGE_INDEX) return true;
+  if (isEarlyReplaceMonumentStage(stage.index)) {
+    return currentStageIndex <= EARLY_REPLACE_MAX_STAGE_INDEX;
+  }
+  return false;
 }

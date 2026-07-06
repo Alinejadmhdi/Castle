@@ -179,7 +179,7 @@ export default function SettingsScreen() {
           <Text style={styles.section}>Developer tools (Expo Go)</Text>
           <Text style={styles.devHint}>
             Add whole bricks to any category to test stage unlocks and monument placement. Standard
-            categories keep monuments from Hut (stage 9) onward.
+            categories keep monuments from Garden Enclosure (stage 6) onward.
           </Text>
           {categories.map((cat) => (
             <View key={`dev-${cat.id}`} style={styles.devRow}>

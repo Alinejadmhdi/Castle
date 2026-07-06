@@ -41,9 +41,9 @@ function resolveZoomForPlatform(
 /** Padding around projected map corners (forest ring included). */
 export const VIEW_BOUNDS_PADDING = 1.06;
 
-/** Map center — do not raise Y; that pushes the -Z bottom edge off screen. */
+/** Map center — slight +Z shifts content toward bottom of viewport. */
 export function getCameraLookAt(_plotScale: number): THREE.Vector3 {
-  return new THREE.Vector3(0, 0, 0);
+  return new THREE.Vector3(0, 0, 0.65);
 }
 
 export function getCoCCameraOffset(distance: number): THREE.Vector3 {
@@ -138,6 +138,12 @@ export function getCoCOrthographicBounds(
     bottom: centerY - halfHeight,
   };
 }
+
+export type { OverlayAxisDelta, OverlayPercent } from './overlayProjection';
+export {
+  getOverlayWorldAxisDeltas,
+  projectPlotWorldToOverlayPercent,
+} from './overlayProjection';
 
 export function applyCoCCamera(
   camera: THREE.Camera,

@@ -3,9 +3,10 @@ import type { CategoryType } from '@/types';
 import { MACRO_BUILDING_STAGES } from '@/constants/buildings';
 import { MINIATURE_BUILDING_STAGES } from '@/constants/miniatureBuildings';
 import { getBuildingVisualParams } from '@/rendering/three/buildingProgress';
-import { HQ_FIXED_VISUAL_SCALE } from './coc/cocPalette';
+import { HQ_LAYOUT, spriteDepthRenderOrder } from '@/rendering/three/mapContentLayout';
+import { spriteSizeScale } from './coc/cocPalette';
 import { BrickCountLabel } from './BrickCountLabel';
-import { CoCBuildingModel } from './coc/CoCBuildingModel';
+import { BuildingStageSprite } from './coc/BuildingStageSprite';
 
 interface ProgressiveBuildingMeshProps {
   totalBrickValue: number;
@@ -14,7 +15,7 @@ interface ProgressiveBuildingMeshProps {
   wallColor?: string;
 }
 
-/** CoC-style HQ at the plot center — fixed size, stage mesh updates in place. */
+/** CoC-style HQ at the plot center — grows with stage, sits toward map bottom. */
 export function ProgressiveBuildingMesh({
   totalBrickValue,
   categoryType,
@@ -29,22 +30,26 @@ export function ProgressiveBuildingMesh({
 
   const stages = categoryType === 'miniature' ? MINIATURE_BUILDING_STAGES : MACRO_BUILDING_STAGES;
   const stage = stages[visual.stageIndex] ?? stages[0];
-  const hqScale = plotScale * HQ_FIXED_VISUAL_SCALE;
-  const labelY = plotScale * (categoryType === 'miniature' ? 4.2 : 6.8);
+  const labelY = plotScale * 5.2;
+
+  const worldX = plotScale * HQ_LAYOUT.worldX;
+  const worldZ = plotScale * HQ_LAYOUT.worldZ;
 
   return (
-    <group position={[0, 0, 0]}>
-      <CoCBuildingModel
+    <group position={[worldX, 0, worldZ]}>
+      <BuildingStageSprite
         stageIndex={visual.stageIndex}
-        categoryType={categoryType}
-        progress={1}
-        plotScale={hqScale}
+        categoryType="standard"
+        plotScale={plotScale}
+        sizeScale={spriteSizeScale(false, false, visual.stageIndex)}
+        anchorLow
+        renderOrder={spriteDepthRenderOrder(worldX, worldZ)}
       />
       <BrickCountLabel
         position={[0, labelY, 0]}
         label={`${totalBrickValue.toFixed(1)} bricks`}
         sublabel={stage.name}
-        scale={plotScale}
+        scale={plotScale * 0.85}
       />
     </group>
   );

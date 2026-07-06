@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber/native';
 import {
   applyCoCCamera,
   COC_DEFAULT_ZOOM,

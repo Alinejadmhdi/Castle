@@ -13,7 +13,7 @@ import { theme } from '@/constants/theme';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
-  useDailySeal();
+  useDailySeal(ready);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -41,14 +41,6 @@ export default function RootLayout() {
     void init();
   }, []);
 
-  if (!ready) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <GestureHandlerRootView style={styles.flex}>
       <StatusBar style="light" />
@@ -69,16 +61,22 @@ export default function RootLayout() {
         <Stack.Screen name="building-gallery" options={{ title: 'Building Gallery' }} />
         <Stack.Screen name="building/[id]" options={{ title: 'Building' }} />
       </Stack>
+      {!ready && (
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      )}
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  loading: {
-    flex: 1,
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 999,
   },
 });

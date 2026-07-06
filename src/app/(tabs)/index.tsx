@@ -7,12 +7,11 @@ import { useTimerStore } from '@/store/timerStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { SettlementPlot } from '@/components/map/SettlementPlot';
 import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
-import { MapActionPanel, type MapPanelMode, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
+import { MapActionPanel, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { UnlockCelebration } from '@/components/celebration/UnlockCelebration';
 import { useCelebrationStore } from '@/store/celebrationStore';
-import { MINIATURE_SCALE } from '@/constants/miniatureBuildings';
 import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
 import { confirmAction } from '@/utils/confirm';
 
@@ -24,10 +23,11 @@ export default function LifeMapScreen() {
   const scenes = useMapSceneStore((s) => s.scenes);
   const loadAll = useMapSceneStore((s) => s.loadAll);
   const loadCategory = useMapSceneStore((s) => s.loadCategory);
+  const loadingIds = useMapSceneStore((s) => s.loadingIds);
   const applyUpdate = useMapSceneStore((s) => s.applyUpdate);
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
   const { active, unlocks, dismiss } = useCelebrationStore();
-  const [panel, setPanel] = useState<{ categoryId: string; mode: MapPanelMode } | null>(null);
+  const [panel, setPanel] = useState<{ categoryId: string } | null>(null);
 
   const categoryIdsKey = useMemo(
     () => categories.map((c) => c.id).join(','),
@@ -80,25 +80,11 @@ export default function LifeMapScreen() {
 
   const showPanel = panelCategory != null && (panel != null || session != null || lastResult != null);
 
-  const panelMode: MapPanelMode =
-    panel?.mode ?? (panelCategory?.type === 'miniature' ? 'resist' : 'focus-setup');
-
   const activePlotCategoryId = session?.categoryId ?? null;
 
-  function openFocus(categoryId: string) {
-    const timer = useTimerStore.getState();
-    const { session } = timer;
-    if (session?.status === 'active' && session.categoryId !== categoryId) return;
-    if (session?.status === 'paused' && session.categoryId !== categoryId) {
-      void timer.abandon();
-    }
-    timer.clearResult();
-    setPanel({ categoryId, mode: 'focus-setup' });
-  }
-
-  function openResist(categoryId: string) {
+  function openBrickPanel(categoryId: string) {
     useMapSceneStore.getState().seedEmptyScene(categoryId);
-    setPanel({ categoryId, mode: 'resist' });
+    setPanel({ categoryId });
     void loadCategory(categoryId);
   }
 
@@ -147,6 +133,7 @@ export default function LifeMapScreen() {
         ) : (
           categories.map((cat) => {
             const scene = scenes[cat.id];
+            const sceneLoading = loadingIds[cat.id] === true;
             const checkpoint = getCheckpointProgress(cat.totalBrickValue, cat.type);
             const showPlot =
               isFocused && (activePlotCategoryId == null || activePlotCategoryId === cat.id);
@@ -168,14 +155,20 @@ export default function LifeMapScreen() {
                   </Pressable>
                 </View>
                 {showPlot ? (
-                  <SettlementPlot
-                    bricks={scene?.bricks ?? []}
-                    buildings={scene?.buildings ?? []}
-                    scale={cat.type === 'miniature' ? MINIATURE_SCALE : 1}
-                    totalBrickValue={cat.totalBrickValue}
-                    categoryType={cat.type}
-                    wallColor={cat.defaultColor}
-                  />
+                  sceneLoading && !scene ? (
+                    <View style={styles.plotLoading}>
+                      <ActivityIndicator color={theme.colors.primary} />
+                    </View>
+                  ) : (
+                    <SettlementPlot
+                      bricks={scene?.bricks ?? []}
+                      buildings={scene?.buildings ?? []}
+                      scale={1}
+                      totalBrickValue={cat.totalBrickValue}
+                      categoryType={cat.type}
+                      wallColor={cat.defaultColor}
+                    />
+                  )
                 ) : (
                   <MapPlotPlaceholder square />
                 )}
@@ -185,20 +178,18 @@ export default function LifeMapScreen() {
                     onPress={() => router.push(`/category/${cat.id}`)}
                     variant="secondary"
                   />
-                  {cat.type === 'standard' ? (
-                    <Button
-                      title={session?.categoryId === cat.id ? 'Focusing…' : 'Focus'}
-                      onPress={() => openFocus(cat.id)}
-                      style={styles.focusBtn}
-                      disabled={!!session && session.categoryId !== cat.id}
-                    />
-                  ) : (
-                    <Button
-                      title="Log Resist"
-                      onPress={() => openResist(cat.id)}
-                      style={styles.focusBtn}
-                    />
-                  )}
+                  <Button
+                    title={
+                      session?.categoryId === cat.id
+                        ? 'Focusing…'
+                        : cat.type === 'miniature'
+                          ? 'Log Resist'
+                          : 'Place Brick'
+                    }
+                    onPress={() => openBrickPanel(cat.id)}
+                    style={styles.focusBtn}
+                    disabled={!!session && session.categoryId !== cat.id}
+                  />
                 </View>
               </View>
             );
@@ -216,7 +207,6 @@ export default function LifeMapScreen() {
       {showPanel && panelCategory && (
         <MapActionPanel
           category={panelCategory}
-          mode={panelMode}
           onClose={closePanel}
           onEndSession={dismissPanel}
           onSceneRefresh={refreshCategoryScene}
@@ -250,6 +240,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   plotHeaderText: { flex: 1, marginRight: theme.spacing.sm },
+  plotLoading: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#4a9238',
+  },
   plotName: { color: theme.colors.text, fontSize: 18, fontWeight: '600' },
   plotMeta: { color: theme.colors.textMuted, fontSize: 13, marginTop: 2 },
   delete: { color: theme.colors.danger, fontSize: 14, fontWeight: '600' },

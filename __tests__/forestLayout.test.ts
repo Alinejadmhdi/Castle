@@ -4,9 +4,9 @@ import {
 } from '../src/rendering/three/forestLayout';
 
 describe('forestLayout', () => {
-  it('generates many small trees', () => {
+  it('generates many scattered trees', () => {
     const trees = generateForestTrees(1, 30);
-    expect(trees.length).toBeGreaterThan(200);
+    expect(trees.length).toBeGreaterThanOrEqual(180);
   });
 
   it('removes trees where a building is placed', () => {

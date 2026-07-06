@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import type { Brick, BuildingInstance } from '@/types';
-import { logMiniatureResistWithRetry } from '@/features/bricks/brickService';
+import { logResistBrickWithRetry } from '@/features/bricks/brickService';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { useCelebrationStore } from '@/store/celebrationStore';
@@ -61,7 +61,8 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
 
         try {
           console.log('[Resist] saving brick', categoryId, categoryType);
-          const result = await logMiniatureResistWithRetry(categoryId);
+          const result = await logResistBrickWithRetry(categoryId);
+          console.log('[Resist] saved brick ok', result.bricks[0]?.id, 'total', result.category.totalBrickValue);
           syncCategory(result.category);
           setSessionCount((c) => c + 1);
 
@@ -89,7 +90,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
         } catch (err) {
           queueRef.current = 0;
           setPending(0);
-          reportFailure(err, 'logMiniatureResist');
+          reportFailure(err, 'logResistBrick');
           void refreshOne(categoryId);
           break;
         }

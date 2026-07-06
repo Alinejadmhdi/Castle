@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import type { Category, BuildingInstance, Brick } from '@/types';
 import { useTimerStore } from '@/store/timerStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -10,13 +10,6 @@ import { startAmbient, stopAmbient, playCompleteSound } from '@/services/audio/a
 import { useFocusSessionAppState } from '@/hooks/useFocusSessionAppState';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { showFocusPrimerIfNeeded } from '@/utils/focusPrimer';
-
-const DURATIONS = [
-  { label: '25m', ms: 25 * 60 * 1000 },
-  { label: '1h', ms: 60 * 60 * 1000 },
-  { label: '2h', ms: 2 * 60 * 60 * 1000 },
-];
 
 function formatTime(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
@@ -27,7 +20,7 @@ function formatTime(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export type MapPanelMode = 'focus-setup' | 'resist';
+export type MapPanelMode = 'brick';
 
 export interface SceneBrickUpdate {
   brick?: Brick;
@@ -37,7 +30,6 @@ export interface SceneBrickUpdate {
 
 interface MapActionPanelProps {
   category: Category;
-  mode: MapPanelMode;
   onClose: () => void;
   /** Called after abandon / give up — always closes the panel. */
   onEndSession: () => void;
@@ -48,23 +40,20 @@ interface MapActionPanelProps {
 
 export function MapActionPanel({
   category,
-  mode,
   onClose,
   onEndSession,
   onSceneRefresh,
   isTabFocused = true,
 }: MapActionPanelProps) {
-  const { session, remainingMs, start, pause, resume, abandon, lastResult, clearResult } =
+  const { session, remainingMs, pause, resume, abandon, lastResult, clearResult } =
     useTimerStore();
   const { settings } = useSettingsStore();
-  const [durationMs, setDurationMs] = useState(DURATIONS[0].ms);
   const { tapResist, pending, error: resistError } = useResist({
     categoryId: category.id,
     categoryType: category.type,
     onSceneUpdate: (categoryId, bricks, buildings) =>
       onSceneRefresh(categoryId, { bricks, buildings }),
   });
-
   const totalBricks = Math.floor(category.totalBrickValue);
   const checkpoint = getCheckpointProgress(totalBricks, category.type);
   const quote = useMotivationQuote(category.name, totalBricks, category.type, totalBricks);
@@ -106,22 +95,13 @@ export function MapActionPanel({
     onSceneRefresh(category.id, { brick, buildings: newBuildings });
   }, [showComplete, category.id, lastResult, onSceneRefresh]);
 
-  async function handleStartFocus() {
-    showFocusPrimerIfNeeded(() => {
-      void start({
-        categoryId: category.id,
-        brickColor: category.defaultColor,
-        plannedDurationMs: durationMs,
-      }).catch((error) => {
-        console.error('Start focus failed:', error);
-      });
-    });
-  }
-
-  function handleDismissComplete() {
+  async function handleDismissComplete() {
     clearResult();
     onEndSession();
   }
+
+  const placeBrickLabel =
+    category.type === 'miniature' ? 'I Resisted — Place Brick' : 'Place Brick';
 
   if (showComplete) {
     return (
@@ -160,39 +140,17 @@ export function MapActionPanel({
     );
   }
 
-  if (mode === 'resist') {
-    return (
-      <View style={styles.panel}>
-        <Text style={styles.categoryName}>{category.name}</Text>
-        <Text style={styles.checkpoint}>
-          {checkpoint.current} bricks · {checkpoint.label} toward {checkpoint.nextStageName}
-        </Text>
-        {quote && <Text style={styles.quote}>{quote}</Text>}
-        {pending > 0 && <Text style={styles.saving}>Saving…</Text>}
-        {resistError && <Text style={styles.resistError} selectable>{resistError}</Text>}
-        <Button title="I Resisted — Place Brick" onPress={tapResist} />
-        <Button title="Close" onPress={onClose} variant="secondary" style={styles.closeBtn} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.panel}>
       <Text style={styles.categoryName}>{category.name}</Text>
-      <Text style={styles.label}>Duration</Text>
-      <View style={styles.durationRow}>
-        {DURATIONS.map((d) => (
-          <Pressable
-            key={d.ms}
-            onPress={() => setDurationMs(d.ms)}
-            style={[styles.durationChip, durationMs === d.ms && styles.durationChipOn]}
-          >
-            <Text style={styles.durationText}>{d.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Button title="Start Focus" onPress={handleStartFocus} />
-      <Button title="Cancel" onPress={onClose} variant="secondary" style={styles.closeBtn} />
+      <Text style={styles.checkpoint}>
+        {checkpoint.current} bricks · {checkpoint.label} toward {checkpoint.nextStageName}
+      </Text>
+      {quote && <Text style={styles.quote}>{quote}</Text>}
+      {pending > 0 && <Text style={styles.saving}>Saving…</Text>}
+      {resistError && <Text style={styles.resistError} selectable>{resistError}</Text>}
+      <Button title={placeBrickLabel} onPress={tapResist} />
+      <Button title="Close" onPress={onClose} variant="secondary" style={styles.closeBtn} />
     </View>
   );
 }
@@ -211,18 +169,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: theme.spacing.sm,
   },
-  label: { color: theme.colors.textMuted, marginBottom: theme.spacing.sm },
-  durationRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
-  durationChip: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.background,
-    borderWidth: 1,
-    borderColor: theme.colors.surfaceElevated,
-  },
-  durationChipOn: { borderColor: theme.colors.primary },
-  durationText: { color: theme.colors.text },
   timer: {
     color: theme.colors.primary,
     fontSize: 48,

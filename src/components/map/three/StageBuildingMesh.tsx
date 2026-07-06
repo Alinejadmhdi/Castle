@@ -2,16 +2,18 @@ import { useMemo } from 'react';
 import type { BuildingInstance } from '@/types';
 import { MACRO_BUILDING_STAGES } from '@/constants/buildings';
 import { MINIATURE_BUILDING_STAGES } from '@/constants/miniatureBuildings';
+import { spriteDepthRenderOrder } from '@/rendering/three/mapContentLayout';
 import { plotSlotToWorld } from '@/rendering/three/settlementLayout';
-import { RING_MONUMENT_VISUAL_SCALE } from './coc/cocPalette';
+import { spriteSizeScale } from './coc/cocPalette';
 import { BrickCountLabel } from './BrickCountLabel';
-import { CoCBuildingModel } from './coc/CoCBuildingModel';
+import { BuildingStageSprite } from './coc/BuildingStageSprite';
 
 interface StageBuildingMeshProps {
   building: BuildingInstance;
   plotScale: number;
   plotX: number;
   plotY: number;
+  currentHqStageIndex: number;
 }
 
 function getStageIndex(building: BuildingInstance): number {
@@ -20,35 +22,40 @@ function getStageIndex(building: BuildingInstance): number {
   return stages.find((s) => s.key === building.stageKey)?.index ?? 0;
 }
 
-/** Single smaller monument in the ring — replaced when the next stage unlocks. */
-export function StageBuildingMesh({ building, plotScale, plotX, plotY }: StageBuildingMeshProps) {
+/** Single monument in the ring — tiered size by monument stage and current HQ stage. */
+export function StageBuildingMesh({
+  building,
+  plotScale,
+  plotX,
+  plotY,
+  currentHqStageIndex,
+}: StageBuildingMeshProps) {
   const stageIndex = getStageIndex(building);
-  const categoryType = building.kind === 'miniature' ? 'miniature' : 'standard';
-  const monumentScale = plotScale * building.scale * RING_MONUMENT_VISUAL_SCALE;
 
   const position = useMemo(
     () => plotSlotToWorld(plotX, plotY, plotScale),
     [plotX, plotY, plotScale],
   );
 
-  const labelY = plotScale * (categoryType === 'miniature' ? 2.8 : 4.2);
+  const labelY = plotScale * 3.4;
   const brickLabel = Number.isInteger(building.totalBrickValue)
     ? `${building.totalBrickValue} bricks`
     : `${building.totalBrickValue.toFixed(1)} bricks`;
 
   return (
     <group position={[position.x, 0, position.z]}>
-      <CoCBuildingModel
+      <BuildingStageSprite
         stageIndex={stageIndex}
-        categoryType={categoryType}
-        progress={1}
-        plotScale={monumentScale}
+        categoryType="standard"
+        plotScale={plotScale * building.scale}
+        sizeScale={spriteSizeScale(true, false, stageIndex, currentHqStageIndex)}
+        renderOrder={spriteDepthRenderOrder(position.x, position.z)}
       />
       <BrickCountLabel
         position={[0, labelY, 0]}
         label={brickLabel}
         sublabel={building.name}
-        scale={plotScale * 0.65}
+        scale={plotScale * 0.55}
       />
     </group>
   );

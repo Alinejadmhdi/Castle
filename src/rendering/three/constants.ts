@@ -9,7 +9,7 @@ export const PLOT_SIZE_MULTIPLIER = 2;
 export const GRID_COLUMNS = 20;
 
 /** Bricks laid on the inner soil pad (not the map edge). */
-export const SOIL_GRID_COLUMNS = 10;
+export const SOIL_GRID_COLUMNS = 20;
 /** Inner soil square = ground width × this fraction (matches CoCMapEnvironment). */
 export const SOIL_PAD_FRACTION = 0.62 * 0.88;
 
@@ -23,5 +23,5 @@ export const MAP_CANVAS_HEIGHT = 500;
 /** CoC clay brick — default color for focus bricks (not gray/black). */
 export const BRICK_DISPLAY_COLOR = '#c45c3a';
 
-/** Canvas / wilderness fill — matches outer forest ring. */
-export const MAP_SKY_COLOR = '#2a871c';
+/** Canvas / wilderness fill — matches forest edge of coc-map-baseplate. */
+export const MAP_SKY_COLOR = '#4a9238';
