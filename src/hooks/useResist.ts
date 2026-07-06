@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, InteractionManager } from 'react-native';
+import { Alert } from 'react-native';
 import type { Brick, BuildingInstance, UnlockEvent } from '@/types';
 import { logResistBrickWithRetry } from '@/features/bricks/brickService';
 import { useCategoryStore } from '@/store/categoryStore';
@@ -101,9 +101,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
       const unlockBatch = pendingUnlocksRef.current;
       pendingUnlocksRef.current = [];
       if (unlockBatch.length > 0) {
-        InteractionManager.runAfterInteractions(() => {
-          triggerCelebration(unlockBatch);
-        });
+        triggerCelebration(unlockBatch);
       }
     } finally {
       processingRef.current = false;

@@ -10,8 +10,6 @@ import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
 import { MapActionPanel, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { UnlockCelebration } from '@/components/celebration/UnlockCelebration';
-import { useCelebrationStore } from '@/store/celebrationStore';
 import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
 import { confirmAction } from '@/utils/confirm';
 
@@ -26,7 +24,6 @@ export default function LifeMapScreen() {
   const loadingIds = useMapSceneStore((s) => s.loadingIds);
   const applyUpdate = useMapSceneStore((s) => s.applyUpdate);
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
-  const { active, unlocks, dismiss } = useCelebrationStore();
   const [panel, setPanel] = useState<{ categoryId: string } | null>(null);
 
   const categoryIdsKey = useMemo(
@@ -226,7 +223,6 @@ export default function LifeMapScreen() {
         />
       )}
 
-      <UnlockCelebration visible={active} unlocks={unlocks} onDismiss={dismiss} />
     </View>
   );
 }

@@ -31,17 +31,16 @@ export function getSoilDimensions(plotScale = 1) {
   return { side, half: side / 2 };
 }
 
-/** Front/back wall row on the painted map border (stone/grass edge, not inner soil pad). */
+/** Front/back wall row on the inner green grass diamond edge (not forest/sea border). */
 export function getWallWorldZ(plotScale = 1): number {
-  const { width } = getGroundDimensions(plotScale);
-  const borderHalf = width / 2;
+  const { half } = getSoilDimensions(plotScale);
   const d = BRICK_DEPTH * plotScale;
   const gap = BRICK_GAP * plotScale;
   const offsetZ = WALL_LAYOUT.offsetZ * plotScale;
   if (WALL_LAYOUT.edge === 'front') {
-    return borderHalf - gap - d / 2 + offsetZ;
+    return half - gap - d / 2 + offsetZ;
   }
-  return -borderHalf + gap + d / 2 + offsetZ;
+  return -half + gap + d / 2 + offsetZ;
 }
 
 /**

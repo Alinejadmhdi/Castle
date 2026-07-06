@@ -11,18 +11,33 @@ interface CelebrationState {
   dismiss: () => void;
 }
 
+let celebrationTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useCelebrationStore = create<CelebrationState>((set) => ({
   active: false,
   unlocks: [],
   trigger: (unlocks) => {
+    if (unlocks.length === 0) return;
+
     const { hapticsEnabled, sfxEnabled } = useSettingsStore.getState().settings;
     if (hapticsEnabled) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    if (sfxEnabled && unlocks.length > 0) {
+    if (sfxEnabled) {
       void playUnlockSound();
     }
-    set({ active: true, unlocks });
+
+    if (celebrationTimer) clearTimeout(celebrationTimer);
+    celebrationTimer = setTimeout(() => {
+      celebrationTimer = null;
+      set({ active: true, unlocks });
+    }, 450);
   },
-  dismiss: () => set({ active: false, unlocks: [] }),
+  dismiss: () => {
+    if (celebrationTimer) {
+      clearTimeout(celebrationTimer);
+      celebrationTimer = null;
+    }
+    set({ active: false, unlocks: [] });
+  },
 }));

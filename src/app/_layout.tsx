@@ -10,7 +10,14 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useTimerStore } from '@/store/timerStore';
 import { stopAmbient } from '@/services/audio/audioService';
 import { useDailySeal } from '@/hooks/useDailySeal';
+import { UnlockCelebration } from '@/components/celebration/UnlockCelebration';
+import { useCelebrationStore } from '@/store/celebrationStore';
 import { theme } from '@/constants/theme';
+
+function CelebrationLayer() {
+  const { active, unlocks, dismiss } = useCelebrationStore();
+  return <UnlockCelebration visible={active} unlocks={unlocks} onDismiss={dismiss} />;
+}
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -44,29 +51,32 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.flex}>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.text,
-          contentStyle: { backgroundColor: theme.colors.background },
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="category/new" options={{ title: 'New Category' }} />
-        <Stack.Screen name="category/[id]" options={{ title: 'Settlement' }} />
-        <Stack.Screen name="session/new" options={{ title: 'New Session' }} />
-        <Stack.Screen name="session/active" options={{ title: 'Focus', headerBackVisible: false }} />
-        <Stack.Screen name="session/complete" options={{ title: 'Complete', headerShown: false }} />
-        <Stack.Screen name="miniature/[categoryId]" options={{ title: 'Log Resist' }} />
-        <Stack.Screen name="building-gallery" options={{ title: 'Building Gallery' }} />
-        <Stack.Screen name="building/[id]" options={{ title: 'Building' }} />
-      </Stack>
-      {!ready && (
-        <View style={styles.loadingOverlay} pointerEvents="auto">
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      )}
+      <View style={styles.flex}>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: theme.colors.background },
+            headerTintColor: theme.colors.text,
+            contentStyle: { backgroundColor: theme.colors.background },
+          }}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="category/new" options={{ title: 'New Category' }} />
+          <Stack.Screen name="category/[id]" options={{ title: 'Settlement' }} />
+          <Stack.Screen name="session/new" options={{ title: 'New Session' }} />
+          <Stack.Screen name="session/active" options={{ title: 'Focus', headerBackVisible: false }} />
+          <Stack.Screen name="session/complete" options={{ title: 'Complete', headerShown: false }} />
+          <Stack.Screen name="miniature/[categoryId]" options={{ title: 'Log Resist' }} />
+          <Stack.Screen name="building-gallery" options={{ title: 'Building Gallery' }} />
+          <Stack.Screen name="building/[id]" options={{ title: 'Building' }} />
+        </Stack>
+        <CelebrationLayer />
+        {!ready && (
+          <View style={styles.loadingOverlay} pointerEvents="auto">
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        )}
+      </View>
     </GestureHandlerRootView>
   );
 }

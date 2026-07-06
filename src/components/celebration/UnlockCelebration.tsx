@@ -1,4 +1,4 @@
-import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import type { UnlockEvent } from '@/types';
 import { useCategoryStore } from '@/store/categoryStore';
 import { theme } from '@/constants/theme';
@@ -12,6 +12,7 @@ interface UnlockCelebrationProps {
   onDismiss: () => void;
 }
 
+/** Root overlay — avoids RN Modal, which crashes navigation on Android during rapid resist. */
 export function UnlockCelebration({ unlocks, visible, onDismiss }: UnlockCelebrationProps) {
   const categories = useCategoryStore((s) => s.categories);
 
@@ -23,10 +24,10 @@ export function UnlockCelebration({ unlocks, visible, onDismiss }: UnlockCelebra
   const progression = formatUnlockProgression(latest, categoryType, category?.name);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <Pressable style={styles.backdrop}>
+    <View style={styles.overlay} pointerEvents="box-none">
+      <Pressable style={styles.backdrop} onPress={onDismiss}>
         <ConfettiOverlay visible />
-        <View style={styles.card}>
+        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.emoji}>🏰</Text>
           <Text style={styles.title}>Unlocked!</Text>
           <Text style={styles.name}>{latest.stageName}</Text>
@@ -36,13 +37,18 @@ export function UnlockCelebration({ unlocks, visible, onDismiss }: UnlockCelebra
             <Text style={styles.sub}>{formatUnlockSummary(unlocks)}</Text>
           )}
           <Button title="Continue Building" onPress={onDismiss} style={styles.btn} />
-        </View>
+        </Pressable>
       </Pressable>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2000,
+    elevation: 2000,
+  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
