@@ -70,13 +70,13 @@ export default function RootLayout() {
           <Stack.Screen name="building-gallery" options={{ title: 'Building Gallery' }} />
           <Stack.Screen name="building/[id]" options={{ title: 'Building' }} />
         </Stack>
-        <CelebrationLayer />
         {!ready && (
           <View style={styles.loadingOverlay} pointerEvents="auto">
             <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         )}
       </View>
+      <CelebrationLayer />
     </GestureHandlerRootView>
   );
 }
