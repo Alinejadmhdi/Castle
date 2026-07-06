@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS settings (
@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   ended_at TEXT,
   status TEXT NOT NULL,
   pause_count INTEGER NOT NULL DEFAULT 0,
-  bricks_earned REAL NOT NULL DEFAULT 0
+  bricks_earned REAL NOT NULL DEFAULT 0,
+  timer_mode TEXT NOT NULL DEFAULT 'countdown'
 );
 
 CREATE TABLE IF NOT EXISTS bricks (

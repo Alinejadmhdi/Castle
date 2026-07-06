@@ -262,6 +262,7 @@ function runQuery(sql: string, params: unknown[] = []): number {
       status: p[7] as FocusSession['status'],
       pauseCount: p[8] as number,
       bricksEarned: p[9] as number,
+      timerMode: (p[10] as FocusSession['timerMode']) ?? 'countdown',
     });
     saveStore(store);
     return 1;
@@ -499,6 +500,7 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         status: s.status,
         pause_count: s.pauseCount,
         bricks_earned: s.bricksEarned,
+        timer_mode: s.timerMode ?? 'countdown',
       },
     ] as T[];
   }
@@ -517,6 +519,7 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         status: s.status,
         pause_count: s.pauseCount,
         bricks_earned: s.bricksEarned,
+        timer_mode: s.timerMode ?? 'countdown',
       })) as T[];
   }
   if (sql.includes('FROM sessions ORDER BY')) {
@@ -533,6 +536,7 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         status: s.status,
         pause_count: s.pauseCount,
         bricks_earned: s.bricksEarned,
+        timer_mode: s.timerMode ?? 'countdown',
       })) as T[];
   }
   if (sql.includes('FROM building_instances WHERE category_id = ? ORDER BY')) {

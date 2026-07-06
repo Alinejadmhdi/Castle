@@ -1,4 +1,4 @@
-import type { Brick, FocusSession, SessionStatus } from '@/types';
+import type { Brick, FocusSession, SessionStatus, SessionTimerMode } from '@/types';
 import { getDatabase } from './db';
 
 interface BrickRow {
@@ -145,6 +145,7 @@ interface SessionRow {
   status: SessionStatus;
   pause_count: number;
   bricks_earned: number;
+  timer_mode: string;
 }
 
 function mapSession(row: SessionRow): FocusSession {
@@ -159,6 +160,7 @@ function mapSession(row: SessionRow): FocusSession {
     status: row.status,
     pauseCount: row.pause_count,
     bricksEarned: row.bricks_earned,
+    timerMode: (row.timer_mode === 'stopwatch' ? 'stopwatch' : 'countdown') as SessionTimerMode,
   };
 }
 
@@ -166,8 +168,8 @@ export async function insertSession(session: FocusSession): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `INSERT INTO sessions (id, category_id, brick_color, planned_duration_ms, elapsed_ms,
-      started_at, ended_at, status, pause_count, bricks_earned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      started_at, ended_at, status, pause_count, bricks_earned, timer_mode)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.categoryId,
@@ -179,6 +181,7 @@ export async function insertSession(session: FocusSession): Promise<void> {
       session.status,
       session.pauseCount,
       session.bricksEarned,
+      session.timerMode,
     ],
   );
 }

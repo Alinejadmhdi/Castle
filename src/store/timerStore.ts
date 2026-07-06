@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Brick, FocusSession, UnlockEvent } from '@/types';
+import type { Brick, FocusSession, SessionTimerMode, UnlockEvent } from '@/types';
 import { generateId, msToBrickValue } from '@/utils';
 import {
   getActiveSession,
@@ -24,6 +24,7 @@ interface TimerState {
     categoryId: string;
     brickColor: string;
     plannedDurationMs: number;
+    timerMode?: SessionTimerMode;
   }) => Promise<void>;
   pause: () => void;
   resume: () => void;
@@ -34,7 +35,14 @@ interface TimerState {
 }
 
 function calcRemaining(session: FocusSession): number {
+  if (session.timerMode === 'stopwatch') {
+    return session.elapsedMs;
+  }
   return Math.max(0, session.plannedDurationMs - session.elapsedMs);
+}
+
+function isStopwatch(session: FocusSession): boolean {
+  return session.timerMode === 'stopwatch';
 }
 
 function segmentElapsedMs(session: FocusSession, activeSinceMs: number | null): number {
@@ -94,7 +102,7 @@ export const useTimerStore = create<TimerState>((set, get) => {
       }
     },
 
-    start: async ({ categoryId, brickColor, plannedDurationMs }) => {
+    start: async ({ categoryId, brickColor, plannedDurationMs, timerMode = 'countdown' }) => {
       let existing = get().session;
       if (existing?.status === 'paused') {
         await get().abandon();
@@ -110,19 +118,20 @@ export const useTimerStore = create<TimerState>((set, get) => {
         id: generateId(),
         categoryId,
         brickColor,
-        plannedDurationMs,
+        plannedDurationMs: timerMode === 'stopwatch' ? 0 : plannedDurationMs,
         elapsedMs: 0,
         startedAt: new Date().toISOString(),
         endedAt: null,
         status: 'active',
         pauseCount: 0,
         bricksEarned: 0,
+        timerMode,
       };
       await insertSession(session);
       startTicking();
       set({
         session,
-        remainingMs: plannedDurationMs,
+        remainingMs: timerMode === 'stopwatch' ? 0 : plannedDurationMs,
         activeSinceMs: Date.now(),
         lastResult: null,
       });
@@ -169,14 +178,24 @@ export const useTimerStore = create<TimerState>((set, get) => {
 
       const now = Date.now();
       const { activeSinceMs } = get();
-      const totalElapsed = Math.min(
-        session.plannedDurationMs,
-        segmentElapsedMs(session, activeSinceMs),
-      );
+      const totalElapsed = segmentElapsedMs(session, activeSinceMs);
 
-      if (totalElapsed >= session.plannedDurationMs) {
+      if (isStopwatch(session)) {
+        const updated = { ...session, elapsedMs: totalElapsed };
+        void updateSession(updated);
         set({
-          session: { ...session, elapsedMs: totalElapsed },
+          session: updated,
+          remainingMs: totalElapsed,
+          activeSinceMs: now,
+        });
+        return;
+      }
+
+      const cappedElapsed = Math.min(session.plannedDurationMs, totalElapsed);
+
+      if (cappedElapsed >= session.plannedDurationMs) {
+        set({
+          session: { ...session, elapsedMs: cappedElapsed },
           remainingMs: 0,
           activeSinceMs: null,
         });
@@ -184,11 +203,11 @@ export const useTimerStore = create<TimerState>((set, get) => {
         return;
       }
 
-      const updated = { ...session, elapsedMs: totalElapsed };
+      const updated = { ...session, elapsedMs: cappedElapsed };
       void updateSession(updated);
       set({
         session: updated,
-        remainingMs: session.plannedDurationMs - totalElapsed,
+        remainingMs: session.plannedDurationMs - cappedElapsed,
         activeSinceMs: now,
       });
     },
@@ -198,7 +217,7 @@ export const useTimerStore = create<TimerState>((set, get) => {
       if (!session) return false;
       clearTickInterval(tickInterval);
 
-      const elapsedMs = Math.min(session.plannedDurationMs, segmentElapsedMs(session, activeSinceMs));
+      const elapsedMs = segmentElapsedMs(session, activeSinceMs);
       const settings = useSettingsStore.getState().settings;
       const brickValue = msToBrickValue(elapsedMs, settings.fractionalBricksEnabled);
 

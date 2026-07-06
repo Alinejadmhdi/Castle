@@ -1,5 +1,6 @@
 export type FocusMode = 'strict' | 'soft';
 export type CategoryType = 'standard' | 'miniature';
+export type SessionTimerMode = 'countdown' | 'stopwatch';
 export type SessionStatus = 'active' | 'completed' | 'abandoned' | 'paused';
 export type BuildingKind = 'macro' | 'daily' | 'compound' | 'sub' | 'miniature';
 export type AmbientSound = 'rain' | 'fire' | 'wind' | 'none';
@@ -49,6 +50,8 @@ export interface FocusSession {
   status: SessionStatus;
   pauseCount: number;
   bricksEarned: number;
+  /** countdown = timer to zero; stopwatch = count up until user finishes (1 hr = 1 brick). */
+  timerMode: SessionTimerMode;
 }
 
 export interface BuildingInstance {

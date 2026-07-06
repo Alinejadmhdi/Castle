@@ -28,6 +28,12 @@ async function openNativeDatabase(): Promise<NativeDb> {
       );
       if (!row) {
         await db.runAsync('INSERT INTO schema_version (version) VALUES (?)', [SCHEMA_VERSION]);
+      } else if (row.version < SCHEMA_VERSION) {
+        const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(sessions)');
+        if (!cols.some((c) => c.name === 'timer_mode')) {
+          await db.execAsync(`ALTER TABLE sessions ADD COLUMN timer_mode TEXT DEFAULT 'countdown'`);
+        }
+        await db.runAsync('UPDATE schema_version SET version = ?', [SCHEMA_VERSION]);
       }
       nativeDb = db;
       return db;
