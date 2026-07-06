@@ -2,10 +2,11 @@ import {
   getSoilDimensions,
   gridToWorldPosition,
   getWallHeightCourses,
+  getWallGreenBorderZ,
 } from '../src/rendering/three/gridToWorld';
-import { WALL_LAYOUT } from '../src/rendering/three/mapContentLayout';
+import { HQ_LAYOUT, WALL_LAYOUT } from '../src/rendering/three/mapContentLayout';
 import { computeGridPosition } from '../src/features/progression/progressionService';
-import { SOIL_GRID_COLUMNS, BRICK_DEPTH, BRICK_GAP } from '../src/rendering/three/constants';
+import { SOIL_GRID_COLUMNS } from '../src/rendering/three/constants';
 
 describe('computeGridPosition wall grid', () => {
   it('places first brick at bottom-left (gridX=0, gridY=0)', () => {
@@ -34,11 +35,11 @@ describe('gridToWorldPosition', () => {
     expect(second.y).toBeGreaterThan(bottom.y);
   });
 
-  it('spreads bricks along the front border on gridX', () => {
+  it('spreads bricks along +X at a fixed Z row', () => {
     const left = gridToWorldPosition(0, 0, 1);
     const right = gridToWorldPosition(1, 0, 1);
-    expect(right.x).toBeGreaterThan(left.x);
-    expect(right.z).toBe(left.z);
+    expect(right.x - left.x).toBeGreaterThan(0.5);
+    expect(right.z).toBeCloseTo(left.z, 5);
   });
 
   it('scales fractional bricks on X', () => {
@@ -46,16 +47,14 @@ describe('gridToWorldPosition', () => {
     expect(pos.scaleX).toBe(0.5);
   });
 
-  it('places bricks on the front edge of the green grass pad', () => {
-    const { half: soilHalf } = getSoilDimensions(1);
+  it('places wall at hqDistanceFactor from HQ toward green border', () => {
+    const borderZ = getWallGreenBorderZ(1);
     const pos = gridToWorldPosition(0, 0, 1);
-    expect(Math.abs(pos.x)).toBeLessThanOrEqual(soilHalf);
-    expect(pos.z).toBeGreaterThan(0);
-    expect(pos.z).toBeLessThanOrEqual(soilHalf + 0.5);
-    expect(pos.z).toBeCloseTo(
-      soilHalf - BRICK_GAP - BRICK_DEPTH / 2 + WALL_LAYOUT.offsetZ,
-      5,
-    );
+    const expectedZ =
+      HQ_LAYOUT.worldZ +
+      (borderZ - HQ_LAYOUT.worldZ) * WALL_LAYOUT.hqDistanceFactor;
+    expect(pos.z).toBeCloseTo(expectedZ, 5);
+    expect(WALL_LAYOUT.hqDistanceFactor).toBe(2);
   });
 });
 

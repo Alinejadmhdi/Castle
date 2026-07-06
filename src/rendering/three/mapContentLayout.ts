@@ -61,6 +61,21 @@ export const WALL_LAYOUT = {
   offsetX: 0.25,
   /** Nudge along the wall edge (world Z). Negative pulls wall toward map center. */
   offsetZ: -0.85,
+
+  /**
+   * **Main wall distance knob** — change this to move the wall closer/farther from HQ.
+   *
+   * The wall anchor slides from HQ toward the inner green grass border:
+   * `position = HQ + factor × (greenBorder − HQ)`
+   *
+   * | Value | Effect |
+   * |-------|--------|
+   * | `1.0` | On the inner green grass edge (safest — stays on map) |
+   * | `1.25` | ~25% farther from HQ than the border |
+   * | `1.5` | Midway toward the outer grass ring |
+   * | `2.0` | Past playable grass into rocks/sea (too far) |
+   */
+  hqDistanceFactor: 2,
 } as const;
 
 /**
