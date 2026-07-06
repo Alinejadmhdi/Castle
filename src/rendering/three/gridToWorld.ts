@@ -8,7 +8,7 @@ import {
   GRID_COLUMNS,
   SOIL_GRID_COLUMNS,
 } from './constants';
-import { SOIL_PAD_SCALE, WALL_LAYOUT, HQ_LAYOUT } from './mapContentLayout';
+import { SOIL_PAD_SCALE, WALL_LAYOUT } from './mapContentLayout';
 
 export interface WorldPosition {
   x: number;
@@ -29,6 +29,19 @@ export function getSoilDimensions(plotScale = 1) {
   const { width: groundW } = getGroundDimensions(plotScale);
   const side = groundW * SOIL_PAD_SCALE;
   return { side, half: side / 2 };
+}
+
+/** Front/back wall row on the painted map border (stone/grass edge, not inner soil pad). */
+export function getWallWorldZ(plotScale = 1): number {
+  const { width } = getGroundDimensions(plotScale);
+  const borderHalf = width / 2;
+  const d = BRICK_DEPTH * plotScale;
+  const gap = BRICK_GAP * plotScale;
+  const offsetZ = WALL_LAYOUT.offsetZ * plotScale;
+  if (WALL_LAYOUT.edge === 'front') {
+    return borderHalf - gap - d / 2 + offsetZ;
+  }
+  return -borderHalf + gap + d / 2 + offsetZ;
 }
 
 /**
@@ -54,13 +67,7 @@ export function gridToWorldPosition(
   const originX = -half + gap + brickW / 2 + WALL_LAYOUT.offsetX * plotScale;
 
   const x = originX + gridX * cellW;
-  const baseZ =
-    WALL_LAYOUT.edge === 'front'
-      ? half - gap - d / 2 + WALL_LAYOUT.offsetZ * plotScale
-      : -half + gap + d / 2 + WALL_LAYOUT.offsetZ * plotScale;
-  const hqZ = HQ_LAYOUT.worldZ * plotScale;
-  const distFromHq = baseZ - hqZ;
-  const z = hqZ + distFromHq * WALL_LAYOUT.distanceFromHqMultiplier;
+  const z = getWallWorldZ(plotScale);
   const y = 0.04 + gridY * (h + gap) + h / 2;
 
   return { x, y, z, scaleX: frac };

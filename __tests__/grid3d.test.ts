@@ -1,9 +1,10 @@
 import {
+  getGroundDimensions,
   getSoilDimensions,
   gridToWorldPosition,
   getWallHeightCourses,
 } from '../src/rendering/three/gridToWorld';
-import { HQ_LAYOUT, WALL_LAYOUT } from '../src/rendering/three/mapContentLayout';
+import { WALL_LAYOUT } from '../src/rendering/three/mapContentLayout';
 import { computeGridPosition } from '../src/features/progression/progressionService';
 import { SOIL_GRID_COLUMNS, BRICK_DEPTH, BRICK_GAP } from '../src/rendering/three/constants';
 
@@ -46,18 +47,17 @@ describe('gridToWorldPosition', () => {
     expect(pos.scaleX).toBe(0.5);
   });
 
-  it('places bricks on the front inner edge of the grass pad', () => {
-    const { half } = getSoilDimensions(1);
+  it('places bricks on the front map border (far from HQ)', () => {
+    const { width } = getGroundDimensions(1);
+    const borderHalf = width / 2;
     const pos = gridToWorldPosition(0, 0, 1);
-    expect(Math.abs(pos.x)).toBeLessThanOrEqual(half);
-    expect(pos.x).toBeLessThan(0);
-    expect(pos.z).toBeGreaterThan(HQ_LAYOUT.worldZ);
-    expect(pos.z).toBeLessThanOrEqual(half + 1);
-    const baseZ = half - BRICK_GAP - BRICK_DEPTH / 2 + WALL_LAYOUT.offsetZ;
-    const expectedZ =
-      HQ_LAYOUT.worldZ +
-      (baseZ - HQ_LAYOUT.worldZ) * WALL_LAYOUT.distanceFromHqMultiplier;
-    expect(pos.z).toBeCloseTo(expectedZ, 5);
+    const { half: soilHalf } = getSoilDimensions(1);
+    expect(Math.abs(pos.x)).toBeLessThanOrEqual(soilHalf);
+    expect(pos.z).toBeGreaterThan(soilHalf);
+    expect(pos.z).toBeCloseTo(
+      borderHalf - BRICK_GAP - BRICK_DEPTH / 2 + WALL_LAYOUT.offsetZ,
+      5,
+    );
   });
 });
 

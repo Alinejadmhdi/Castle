@@ -59,10 +59,8 @@ export const WALL_LAYOUT = {
   edge: 'front' as const,
   /** Nudge wall horizontally (world X). */
   offsetX: 0.25,
-  /** Nudge along the wall edge (world Z). */
+  /** Nudge along the wall edge (world Z). Negative pulls wall toward map center. */
   offsetZ: -0.85,
-  /** 1 = wall on the inner grass edge. Values >1 push bricks off the visible pad. */
-  distanceFromHqMultiplier: 1,
 } as const;
 
 /**

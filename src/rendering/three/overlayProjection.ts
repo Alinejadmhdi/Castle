@@ -2,11 +2,9 @@
  * Pure-math plot → 2D overlay projection for native Life Map.
  * Intentionally does NOT import three.js — keeps release APK stable on Android.
  */
-import { getGroundDimensions } from './gridToWorld';
+import { getGroundDimensions, getWallWorldZ } from './gridToWorld';
 import { getMapViewHalfExtent } from './forestLayout';
 import { getMonumentRingHalfExtent } from './settlementLayout';
-
-import { HQ_LAYOUT, WALL_LAYOUT } from './mapContentLayout';
 
 export const OVERLAY_DEFAULT_ZOOM = 2.15;
 export const OVERLAY_CENTER_ZOOM = 1.35;
@@ -115,14 +113,7 @@ function getProjectedViewExtents(plotScale: number) {
     const side = width * 0.44;
     return { half: side / 2 };
   })();
-  const wallBaseZ =
-    soilHalf -
-    0.06 -
-    0.25 +
-    -0.85; // BRICK_GAP, BRICK_DEPTH/2, WALL_LAYOUT.offsetZ
-  const wallZ =
-    HQ_LAYOUT.worldZ +
-    (wallBaseZ - HQ_LAYOUT.worldZ) * WALL_LAYOUT.distanceFromHqMultiplier;
+  const wallZ = getWallWorldZ(plotScale);
   const wallMinX = -soilHalf;
   const wallMaxX = soilHalf;
   for (const x of [wallMinX, 0, wallMaxX]) {

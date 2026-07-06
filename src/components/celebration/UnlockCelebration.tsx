@@ -23,7 +23,7 @@ export function UnlockCelebration({ unlocks, visible, onDismiss }: UnlockCelebra
   const progression = formatUnlockProgression(latest, categoryType, category?.name);
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop}>
         <ConfettiOverlay visible />
         <View style={styles.card}>

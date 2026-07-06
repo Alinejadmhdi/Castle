@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert } from 'react-native';
-import type { Brick, BuildingInstance } from '@/types';
+import { Alert, InteractionManager } from 'react-native';
+import type { Brick, BuildingInstance, UnlockEvent } from '@/types';
 import { logResistBrickWithRetry } from '@/features/bricks/brickService';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
@@ -26,6 +26,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
 
   const queueRef = useRef(0);
   const processingRef = useRef(false);
+  const pendingUnlocksRef = useRef<UnlockEvent[]>([]);
 
   const [sessionCount, setSessionCount] = useState(0);
   const [pending, setPending] = useState(0);
@@ -84,16 +85,25 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
           }
 
           if (result.unlocks.length > 0) {
-            triggerCelebration(result.unlocks);
+            pendingUnlocksRef.current.push(...result.unlocks);
           }
           setError(null);
         } catch (err) {
           queueRef.current = 0;
           setPending(0);
+          pendingUnlocksRef.current = [];
           reportFailure(err, 'logResistBrick');
           void refreshOne(categoryId);
           break;
         }
+      }
+
+      const unlockBatch = pendingUnlocksRef.current;
+      pendingUnlocksRef.current = [];
+      if (unlockBatch.length > 0) {
+        InteractionManager.runAfterInteractions(() => {
+          triggerCelebration(unlockBatch);
+        });
       }
     } finally {
       processingRef.current = false;
