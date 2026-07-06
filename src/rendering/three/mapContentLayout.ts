@@ -61,13 +61,13 @@ export const WALL_LAYOUT = {
   offsetX: 0.25,
   /** Nudge along the wall edge (world Z). */
   offsetZ: -0.85,
-  /** Scales distance from HQ to wall; 3 = base distance × 3 (+ half-step from prior ×2). */
-  distanceFromHqMultiplier: 3,
+  /** 1 = wall on the inner grass edge. Values >1 push bricks off the visible pad. */
+  distanceFromHqMultiplier: 1,
 } as const;
 
 /**
  * Native 2D wall line on coc-map-baseplate (% of square plot).
- * World Z uses distanceFromHqMultiplier for 3D spacing — too far for flat overlay projection.
+ * 2D overlay uses screen % anchors; 3D wall uses WALL_LAYOUT + gridToWorldPosition.
  */
 export const WALL_OVERLAY = {
   start: { left: 22, top: 30 },

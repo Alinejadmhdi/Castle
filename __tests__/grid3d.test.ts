@@ -46,12 +46,13 @@ describe('gridToWorldPosition', () => {
     expect(pos.scaleX).toBe(0.5);
   });
 
-  it('places bricks in front of HQ, scaled by distanceFromHqMultiplier', () => {
+  it('places bricks on the front inner edge of the grass pad', () => {
     const { half } = getSoilDimensions(1);
     const pos = gridToWorldPosition(0, 0, 1);
     expect(Math.abs(pos.x)).toBeLessThanOrEqual(half);
     expect(pos.x).toBeLessThan(0);
     expect(pos.z).toBeGreaterThan(HQ_LAYOUT.worldZ);
+    expect(pos.z).toBeLessThanOrEqual(half + 1);
     const baseZ = half - BRICK_GAP - BRICK_DEPTH / 2 + WALL_LAYOUT.offsetZ;
     const expectedZ =
       HQ_LAYOUT.worldZ +

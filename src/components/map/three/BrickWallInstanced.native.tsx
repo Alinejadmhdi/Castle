@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { InstancedMesh } from 'three';
-import * as THREE from 'three';
+import { THREE } from '@/rendering/three/nativeThreeSetup';
 import type { ThreeEvent } from '@react-three/fiber/native';
 import { useThree } from '@react-three/fiber/native';
 import type { Brick } from '@/types';
@@ -56,6 +56,7 @@ export function BrickWallInstanced({
     () =>
       new THREE.MeshBasicMaterial({
         vertexColors: true,
+        toneMapped: false,
       }),
     [],
   );
@@ -117,6 +118,7 @@ export function BrickWallInstanced({
           ref={meshRef}
           args={[geometry, material, instancedBricks.length]}
           frustumCulled={false}
+          renderOrder={4}
           onClick={onPress ? handleClick : undefined}
         />
       )}

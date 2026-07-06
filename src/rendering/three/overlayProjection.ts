@@ -6,7 +6,7 @@ import { getGroundDimensions } from './gridToWorld';
 import { getMapViewHalfExtent } from './forestLayout';
 import { getMonumentRingHalfExtent } from './settlementLayout';
 
-import { HQ_LAYOUT } from './mapContentLayout';
+import { HQ_LAYOUT, WALL_LAYOUT } from './mapContentLayout';
 
 export const OVERLAY_DEFAULT_ZOOM = 2.15;
 export const OVERLAY_CENTER_ZOOM = 1.35;
@@ -121,7 +121,8 @@ function getProjectedViewExtents(plotScale: number) {
     0.25 +
     -0.85; // BRICK_GAP, BRICK_DEPTH/2, WALL_LAYOUT.offsetZ
   const wallZ =
-    HQ_LAYOUT.worldZ + (wallBaseZ - HQ_LAYOUT.worldZ) * 3; // distanceFromHqMultiplier
+    HQ_LAYOUT.worldZ +
+    (wallBaseZ - HQ_LAYOUT.worldZ) * WALL_LAYOUT.distanceFromHqMultiplier;
   const wallMinX = -soilHalf;
   const wallMaxX = soilHalf;
   for (const x of [wallMinX, 0, wallMaxX]) {
