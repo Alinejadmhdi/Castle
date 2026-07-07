@@ -16,6 +16,7 @@ interface CategoryRow {
   current_streak: number;
   longest_streak: number;
   last_brick_date: string | null;
+  daily_goal_hours: number;
   created_at: string;
 }
 
@@ -33,6 +34,7 @@ function mapCategory(row: CategoryRow): Category {
     currentStreak: row.current_streak,
     longestStreak: row.longest_streak,
     lastBrickDate: row.last_brick_date,
+    dailyGoalHours: row.daily_goal_hours ?? 1,
     createdAt: row.created_at,
   };
 }
@@ -75,12 +77,13 @@ export async function createCategory(input: {
       currentStreak: 0,
       longestStreak: 0,
       lastBrickDate: null,
+      dailyGoalHours: 1,
       createdAt: new Date().toISOString(),
     };
     await db.runAsync(
       `INSERT INTO categories (id, name, default_color, icon, type, sort_order, is_hidden,
-      total_brick_value, current_stage_index, current_streak, longest_streak, last_brick_date, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, NULL, ?)`,
+      total_brick_value, current_stage_index, current_streak, longest_streak, last_brick_date, daily_goal_hours, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, NULL, 1, ?)`,
       [
         category.id,
         category.name,
@@ -99,7 +102,7 @@ export async function updateCategory(category: Category): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `UPDATE categories SET name=?, default_color=?, icon=?, type=?, sort_order=?, is_hidden=?,
-      total_brick_value=?, current_stage_index=?, current_streak=?, longest_streak=?, last_brick_date=?
+      total_brick_value=?, current_stage_index=?, current_streak=?, longest_streak=?, last_brick_date=?, daily_goal_hours=?
      WHERE id=?`,
     [
       category.name,
@@ -113,6 +116,7 @@ export async function updateCategory(category: Category): Promise<void> {
       category.currentStreak,
       category.longestStreak,
       category.lastBrickDate,
+      category.dailyGoalHours,
       category.id,
     ],
   );
@@ -148,6 +152,17 @@ export async function incrementCategoryAfterBrick(
     [categoryId],
   );
   return row?.total_brick_value ?? 0;
+}
+
+export async function updateCategoryDailyGoal(
+  categoryId: string,
+  dailyGoalHours: number,
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE categories SET daily_goal_hours = ? WHERE id = ?', [
+    Math.max(0, dailyGoalHours),
+    categoryId,
+  ]);
 }
 
 export async function deleteCategory(id: string): Promise<void> {

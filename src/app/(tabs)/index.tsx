@@ -5,8 +5,8 @@ import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useTimerStore } from '@/store/timerStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
+import { usePlotRenderStore } from '@/store/plotRenderStore';
 import { SettlementPlot } from '@/components/map/SettlementPlot';
-import { SettlementPlotPreview } from '@/components/map/SettlementPlotPreview';
 import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
 import { MapActionPanel, type MapPanelMode, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
 import { theme } from '@/constants/theme';
@@ -32,6 +32,7 @@ export default function LifeMapScreen() {
   const loadingIds = useMapSceneStore((s) => s.loadingIds);
   const applyUpdate = useMapSceneStore((s) => s.applyUpdate);
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
+  const activate3d = usePlotRenderStore((s) => s.activate3d);
   const [panel, setPanel] = useState<{ categoryId: string; mode: MapPanelMode } | null>(null);
   const [todayDaily, setTodayDaily] = useState<Record<string, DailyBuild>>({});
 
@@ -125,6 +126,7 @@ export default function LifeMapScreen() {
     panel?.mode ?? (panelCategory?.type === 'miniature' ? 'resist' : 'focus-setup');
 
   function openFocus(categoryId: string) {
+    activate3d(categoryId);
     const timer = useTimerStore.getState();
     const { session: activeSession } = timer;
     if (activeSession?.status === 'active' && activeSession.categoryId !== categoryId) return;
@@ -136,6 +138,7 @@ export default function LifeMapScreen() {
   }
 
   function openResist(categoryId: string) {
+    activate3d(categoryId);
     useMapSceneStore.getState().seedEmptyScene(categoryId);
     setPanel({ categoryId, mode: 'resist' });
     void loadCategory(categoryId);
@@ -189,9 +192,7 @@ export default function LifeMapScreen() {
             const sceneLoading = loadingIds[cat.id] === true;
             const checkpoint = getCheckpointProgress(cat.totalBrickValue, cat.type);
             const addedToday = bricksAddedToday(todayDaily[cat.id] ?? null, cat.totalBrickValue);
-            const glCategoryId = session?.categoryId ?? panel?.categoryId ?? null;
-            const showFullPlot = isFocused && glCategoryId === cat.id;
-            const showLitePlot = isFocused && !showFullPlot;
+            const showFullPlot = isFocused;
             return (
               <View key={cat.id} style={styles.plotCard}>
                 <View style={styles.plotHeader}>
@@ -225,19 +226,6 @@ export default function LifeMapScreen() {
                       totalBrickValue={cat.totalBrickValue}
                       categoryType={cat.type}
                       wallColor={cat.defaultColor}
-                    />
-                  )
-                ) : showLitePlot ? (
-                  sceneLoading && !scene ? (
-                    <View style={styles.plotLoading}>
-                      <ActivityIndicator color={theme.colors.primary} />
-                    </View>
-                  ) : (
-                    <SettlementPlotPreview
-                      bricks={scene?.bricks ?? []}
-                      buildings={scene?.buildings ?? []}
-                      totalBrickValue={cat.totalBrickValue}
-                      categoryType={cat.type}
                     />
                   )
                 ) : (

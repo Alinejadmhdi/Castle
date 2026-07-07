@@ -58,6 +58,14 @@ async function openNativeDatabase(): Promise<NativeDb> {
             }
           }
         }
+        if (row.version < 4) {
+          const catCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(categories)');
+          if (!catCols.some((c) => c.name === 'daily_goal_hours')) {
+            await db.execAsync(
+              `ALTER TABLE categories ADD COLUMN daily_goal_hours REAL NOT NULL DEFAULT 1`,
+            );
+          }
+        }
         await db.runAsync('UPDATE schema_version SET version = ?', [SCHEMA_VERSION]);
       }
       nativeDb = db;

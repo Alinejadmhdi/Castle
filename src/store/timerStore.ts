@@ -11,6 +11,7 @@ import { completeSessionBricks } from '@/features/bricks/brickService';
 import { useSettingsStore } from './settingsStore';
 import { useCategoryStore } from './categoryStore';
 import { useCelebrationStore } from './celebrationStore';
+import { usePlotRenderStore } from './plotRenderStore';
 
 interface TimerState {
   session: FocusSession | null;
@@ -142,6 +143,7 @@ export const useTimerStore = create<TimerState>((set, get) => {
         timerMode,
       };
       await insertSession(session);
+      usePlotRenderStore.getState().activate3d(categoryId);
       startTicking();
       set({
         session,

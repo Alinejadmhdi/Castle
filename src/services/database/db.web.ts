@@ -79,6 +79,7 @@ function categoryToRow(c: Category) {
     current_streak: c.currentStreak,
     longest_streak: c.longestStreak,
     last_brick_date: c.lastBrickDate,
+    daily_goal_hours: c.dailyGoalHours,
     created_at: c.createdAt,
   };
 }
@@ -97,6 +98,7 @@ function mapCategoryRow(row: ReturnType<typeof categoryToRow>): Category {
     currentStreak: row.current_streak,
     longestStreak: row.longest_streak,
     lastBrickDate: row.last_brick_date,
+    dailyGoalHours: row.daily_goal_hours ?? 1,
     createdAt: row.created_at,
   };
 }
@@ -119,10 +121,22 @@ function runQuery(sql: string, params: unknown[] = []): number {
       current_streak: 0,
       longest_streak: 0,
       last_brick_date: null,
+      daily_goal_hours: 1,
       created_at: p[6] as string,
     });
     store.categories.push(cat);
     saveStore(store);
+    return 1;
+  }
+
+  if (sql.includes('UPDATE categories SET daily_goal_hours')) {
+    const goal = p[0] as number;
+    const id = p[1] as string;
+    const idx = store.categories.findIndex((c) => c.id === id);
+    if (idx >= 0) {
+      store.categories[idx] = { ...store.categories[idx], dailyGoalHours: goal };
+      saveStore(store);
+    }
     return 1;
   }
 
@@ -161,6 +175,7 @@ function runQuery(sql: string, params: unknown[] = []): number {
         currentStreak: p[8] as number,
         longestStreak: p[9] as number,
         lastBrickDate: p[10] as string | null,
+        dailyGoalHours: p[11] as number,
       };
       saveStore(store);
     }
@@ -668,6 +683,25 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         sealed: d.sealed ? 1 : 0,
       },
     ] as T[];
+  }
+  if (sql.includes('FROM daily_builds WHERE category_id = ? AND date >= ? AND date <= ?')) {
+    return store.daily_builds
+      .filter(
+        (x) =>
+          x.categoryId === params[0] &&
+          x.date >= (params[1] as string) &&
+          x.date <= (params[2] as string),
+      )
+      .map((d) => ({
+        id: d.id,
+        category_id: d.categoryId,
+        date: d.date,
+        brick_value_today: d.brickValueToday,
+        starting_brick_value: d.startingBrickValue ?? 0,
+        brick_ids: JSON.stringify(d.brickIds),
+        structure_key: d.structureKey,
+        sealed: d.sealed ? 1 : 0,
+      })) as T[];
   }
   if (sql.includes('FROM daily_builds WHERE date = ?')) {
     return store.daily_builds

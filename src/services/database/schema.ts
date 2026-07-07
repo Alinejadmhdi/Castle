@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS settings (
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS categories (
   current_streak INTEGER NOT NULL DEFAULT 0,
   longest_streak INTEGER NOT NULL DEFAULT 0,
   last_brick_date TEXT,
+  daily_goal_hours REAL NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
 

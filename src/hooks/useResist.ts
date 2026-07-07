@@ -3,6 +3,7 @@ import { Alert, InteractionManager, Platform } from 'react-native';
 import type { Brick, BuildingInstance, Category, UnlockEvent } from '@/types';
 import { logResistBrickWithRetry } from '@/features/bricks/brickService';
 import { useCategoryStore } from '@/store/categoryStore';
+import { usePlotRenderStore } from '@/store/plotRenderStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { useCelebrationStore } from '@/store/celebrationStore';
 import { formatErrorForUser } from '@/utils/formatError';
@@ -148,6 +149,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
       reportFailure(new Error('No category selected'), 'tapResist');
       return;
     }
+    usePlotRenderStore.getState().activate3d(categoryId);
     setError(null);
     queueRef.current += 1;
     setPending(queueRef.current);

@@ -237,3 +237,18 @@ export async function getUnsealedDailyBuildsBefore(date: string): Promise<DailyB
   );
   return rows.map(mapDaily);
 }
+
+export async function getDailyBuildsForCategoryBetween(
+  categoryId: string,
+  startDate: string,
+  endDate: string,
+): Promise<DailyBuild[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<DailyRow>(
+    `SELECT * FROM daily_builds
+     WHERE category_id = ? AND date >= ? AND date <= ?
+     ORDER BY date ASC`,
+    [categoryId, startDate, endDate],
+  );
+  return rows.map(mapDaily);
+}

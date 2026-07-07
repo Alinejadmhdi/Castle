@@ -18,6 +18,8 @@ export interface Category {
   currentStreak: number;
   longestStreak: number;
   lastBrickDate: string | null;
+  /** Daily focus/resist goal in hours (1 brick = 1 hr). */
+  dailyGoalHours: number;
   createdAt: string;
 }
 
