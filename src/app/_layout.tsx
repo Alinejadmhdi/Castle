@@ -1,6 +1,6 @@
 import '@/rendering/three/nativeThreeSetup';
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, AppState, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,14 +10,7 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useTimerStore } from '@/store/timerStore';
 import { stopAmbient } from '@/services/audio/audioService';
 import { useDailySeal } from '@/hooks/useDailySeal';
-import { UnlockCelebration } from '@/components/celebration/UnlockCelebration';
-import { useCelebrationStore } from '@/store/celebrationStore';
 import { theme } from '@/constants/theme';
-
-function CelebrationLayer() {
-  const { active, unlocks, dismiss } = useCelebrationStore();
-  return <UnlockCelebration visible={active} unlocks={unlocks} onDismiss={dismiss} />;
-}
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -69,6 +62,10 @@ export default function RootLayout() {
           <Stack.Screen name="miniature/[categoryId]" options={{ title: 'Log Resist' }} />
           <Stack.Screen name="building-gallery" options={{ title: 'Building Gallery' }} />
           <Stack.Screen name="building/[id]" options={{ title: 'Building' }} />
+          <Stack.Screen
+            name="unlock-celebration"
+            options={{ title: 'Unlocked', headerShown: false, presentation: 'fullScreenModal' }}
+          />
         </Stack>
         {!ready && (
           <View style={styles.loadingOverlay} pointerEvents="auto">
@@ -76,7 +73,6 @@ export default function RootLayout() {
           </View>
         )}
       </View>
-      <CelebrationLayer />
     </GestureHandlerRootView>
   );
 }

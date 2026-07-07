@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppState, Platform, type AppStateStatus } from 'react-native';
+import { AppState, type AppStateStatus } from 'react-native';
 import { sealStaleDailyBuilds } from '@/features/daily/dailySealService';
 import { useCelebrationStore } from '@/store/celebrationStore';
 import { todayLocalDate } from '@/utils';
@@ -16,7 +16,7 @@ export function useDailySeal(enabled = true) {
       sealingRef.current = true;
       try {
         const unlocks = await sealStaleDailyBuilds();
-        if (unlocks.length > 0 && Platform.OS !== 'android') {
+        if (unlocks.length > 0) {
           useCelebrationStore.getState().trigger(unlocks);
         }
       } finally {

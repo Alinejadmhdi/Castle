@@ -42,7 +42,7 @@ export const SettlementPlot = memo(function SettlementPlot({
         <Canvas
           style={styles.canvas}
           orthographic
-          frameloop="always"
+          frameloop="demand"
           events={events}
           gl={{ alpha: true, antialias: true }}
           onCreated={({ gl }) => {

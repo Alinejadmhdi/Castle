@@ -6,6 +6,7 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useTimerStore } from '@/store/timerStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { SettlementPlot } from '@/components/map/SettlementPlot';
+import { SettlementPlotLite } from '@/components/map/SettlementPlotLite';
 import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
 import { MapActionPanel, type MapPanelMode, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
 import { theme } from '@/constants/theme';
@@ -123,8 +124,6 @@ export default function LifeMapScreen() {
   const panelMode =
     panel?.mode ?? (panelCategory?.type === 'miniature' ? 'resist' : 'focus-setup');
 
-  const activePlotCategoryId = session?.categoryId ?? null;
-
   function openFocus(categoryId: string) {
     const timer = useTimerStore.getState();
     const { session: activeSession } = timer;
@@ -190,8 +189,9 @@ export default function LifeMapScreen() {
             const sceneLoading = loadingIds[cat.id] === true;
             const checkpoint = getCheckpointProgress(cat.totalBrickValue, cat.type);
             const addedToday = bricksAddedToday(todayDaily[cat.id] ?? null, cat.totalBrickValue);
-            const showPlot =
-              isFocused && (activePlotCategoryId == null || activePlotCategoryId === cat.id);
+            const glCategoryId = session?.categoryId ?? panel?.categoryId ?? null;
+            const showFullPlot = isFocused && glCategoryId === cat.id;
+            const showLitePlot = isFocused && !showFullPlot;
             return (
               <View key={cat.id} style={styles.plotCard}>
                 <View style={styles.plotHeader}>
@@ -212,7 +212,7 @@ export default function LifeMapScreen() {
                     <Text style={styles.delete}>Delete</Text>
                   </Pressable>
                 </View>
-                {showPlot ? (
+                {showFullPlot ? (
                   sceneLoading && !scene ? (
                     <View style={styles.plotLoading}>
                       <ActivityIndicator color={theme.colors.primary} />
@@ -227,6 +227,11 @@ export default function LifeMapScreen() {
                       wallColor={cat.defaultColor}
                     />
                   )
+                ) : showLitePlot ? (
+                  <SettlementPlotLite
+                    totalBrickValue={cat.totalBrickValue}
+                    categoryType={cat.type}
+                  />
                 ) : (
                   <MapPlotPlaceholder square />
                 )}
