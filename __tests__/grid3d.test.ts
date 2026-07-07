@@ -6,7 +6,7 @@ import {
 } from '../src/rendering/three/gridToWorld';
 import { HQ_LAYOUT, WALL_LAYOUT } from '../src/rendering/three/mapContentLayout';
 import { computeGridPosition } from '../src/features/progression/progressionService';
-import { SOIL_GRID_COLUMNS } from '../src/rendering/three/constants';
+import { SOIL_GRID_COLUMNS, BRICK_WIDTH, BRICK_GAP } from '../src/rendering/three/constants';
 
 describe('computeGridPosition wall grid', () => {
   it('places first brick at bottom-left (gridX=0, gridY=0)', () => {
@@ -35,11 +35,12 @@ describe('gridToWorldPosition', () => {
     expect(second.y).toBeGreaterThan(bottom.y);
   });
 
-  it('spreads bricks along +X at a fixed Z row', () => {
-    const left = gridToWorldPosition(0, 0, 1);
-    const right = gridToWorldPosition(1, 0, 1);
-    expect(right.x - left.x).toBeGreaterThan(0.5);
-    expect(right.z).toBeCloseTo(left.z, 5);
+  it('spreads bricks along row step (Δx, Δz) per gridX', () => {
+    const a = gridToWorldPosition(0, 0, 1);
+    const b = gridToWorldPosition(1, 0, 1);
+    const cellW = (BRICK_WIDTH + BRICK_GAP) * 1;
+    expect(b.x - a.x).toBeCloseTo(cellW * WALL_LAYOUT.rowStepX, 5);
+    expect(b.z - a.z).toBeCloseTo(WALL_LAYOUT.rowStepZ, 5);
   });
 
   it('scales fractional bricks on X', () => {
@@ -49,12 +50,22 @@ describe('gridToWorldPosition', () => {
 
   it('places wall at hqDistanceFactor from HQ toward green border', () => {
     const borderZ = getWallGreenBorderZ(1);
-    const pos = gridToWorldPosition(0, 0, 1);
+    const mid = (SOIL_GRID_COLUMNS - 1) / 2;
+    const a = gridToWorldPosition(Math.floor(mid) - 1, 0, 1);
+    const b = gridToWorldPosition(Math.ceil(mid) + 1, 0, 1);
     const expectedZ =
       HQ_LAYOUT.worldZ +
-      (borderZ - HQ_LAYOUT.worldZ) * WALL_LAYOUT.hqDistanceFactor;
-    expect(pos.z).toBeCloseTo(expectedZ, 5);
+      (borderZ - HQ_LAYOUT.worldZ) * WALL_LAYOUT.hqDistanceFactor +
+      WALL_LAYOUT.nudgeZ;
+    expect((a.z + b.z) / 2).toBeCloseTo(expectedZ, 5);
     expect(WALL_LAYOUT.hqDistanceFactor).toBe(2);
+  });
+
+  it('centers wall row on HQ worldX when centerOnHq is enabled', () => {
+    const left = gridToWorldPosition(0, 0, 1);
+    const right = gridToWorldPosition(SOIL_GRID_COLUMNS - 1, 0, 1);
+    const centerX = (left.x + right.x) / 2;
+    expect(centerX).toBeCloseTo(HQ_LAYOUT.worldX + WALL_LAYOUT.offsetX, 3);
   });
 });
 

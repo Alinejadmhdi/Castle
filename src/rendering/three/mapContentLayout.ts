@@ -57,10 +57,20 @@ export const RING_LAYOUT = {
 /** Brick wall along the front inner edge of the grass diamond (+Z). */
 export const WALL_LAYOUT = {
   edge: 'front' as const,
-  /** Nudge wall horizontally (world X). */
-  offsetX: 0.25,
-  /** Nudge along the wall edge (world Z). Negative pulls wall toward map center. */
+  /** Fine-tune after centerOnHq — slide row left (−) / right (+). */
+  offsetX: 0.05,
+  /** Nudge wall Z after distance calc. Negative pulls toward HQ. */
   offsetZ: -0.85,
+  /** Extra +Z after hqDistanceFactor (whole row). */
+  nudgeZ: 0.35,
+  /** When true, row midpoint sits on HQ worldX (directly in front of HQ). */
+  centerOnHq: true,
+  /**
+   * Per brick step along the row (+1 gridX). cellW ≈ 1.14 at plotScale 1.
+   * Isometric row: more +X, less +Z (Δx ≈ cellW, Δz small).
+   */
+  rowStepX: 1.02,
+  rowStepZ: 0.1,
 
   /**
    * **Main wall distance knob** — change this to move the wall closer/farther from HQ.

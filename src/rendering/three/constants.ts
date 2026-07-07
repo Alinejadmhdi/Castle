@@ -2,7 +2,10 @@
 export const BRICK_WIDTH = 1;
 export const BRICK_HEIGHT = 0.45;
 export const BRICK_DEPTH = 0.5;
-export const BRICK_GAP = 0.06;
+export const BRICK_GAP = 0;
+
+/** Full cell — bricks touch; color pattern provides visual separation. */
+export const BRICK_VISUAL_INSET = 1;
 
 /** Plot is 2× the original size. */
 export const PLOT_SIZE_MULTIPLIER = 2;

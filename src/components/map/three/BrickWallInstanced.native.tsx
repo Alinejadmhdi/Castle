@@ -4,9 +4,14 @@ import { THREE } from '@/rendering/three/nativeThreeSetup';
 import type { ThreeEvent } from '@react-three/fiber/native';
 import { useThree } from '@react-three/fiber/native';
 import type { Brick } from '@/types';
-import { BRICK_DEPTH, BRICK_HEIGHT, BRICK_WIDTH } from '@/rendering/three/constants';
+import {
+  BRICK_DEPTH,
+  BRICK_HEIGHT,
+  BRICK_WIDTH,
+  BRICK_VISUAL_INSET,
+} from '@/rendering/three/constants';
 import { gridToWorldPosition } from '@/rendering/three/gridToWorld';
-import { resolveBrickDisplayColor } from '@/utils/brickColor';
+import { wallBrickDisplayColor, wallBrickPlacementIndex } from '@/utils/brickColor';
 import { BrickMesh } from './BrickMesh';
 
 interface BrickWallInstancedProps {
@@ -37,7 +42,7 @@ function brighten(hex: string, amount: number): THREE.Color {
 }
 
 function brickDisplayColor(brick: Brick): THREE.Color {
-  const base = resolveBrickDisplayColor(brick.color);
+  const base = wallBrickDisplayColor(brick.color, wallBrickPlacementIndex(brick));
   return brick.streakRewardLabel ? brighten(base, 0.12) : tempColor.set(base);
 }
 
@@ -85,9 +90,9 @@ export function BrickWallInstanced({
         brick.fractionalValue,
         plotScale,
       );
-      const w = BRICK_WIDTH * plotScale * scaleX;
-      const h = BRICK_HEIGHT * plotScale;
-      const d = BRICK_DEPTH * plotScale;
+      const w = BRICK_WIDTH * plotScale * scaleX * BRICK_VISUAL_INSET;
+      const h = BRICK_HEIGHT * plotScale * BRICK_VISUAL_INSET;
+      const d = BRICK_DEPTH * plotScale * BRICK_VISUAL_INSET;
 
       dummy.position.set(x, y, z);
       dummy.scale.set(w, h, d);

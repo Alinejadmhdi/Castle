@@ -1,6 +1,6 @@
 import '@/rendering/three/nativeThreeSetup';
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, AppState, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -76,7 +76,7 @@ export default function RootLayout() {
           </View>
         )}
       </View>
-      <CelebrationLayer />
+      {Platform.OS !== 'android' && <CelebrationLayer />}
     </GestureHandlerRootView>
   );
 }

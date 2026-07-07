@@ -3,7 +3,7 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import type { Brick, CategoryType } from '@/types';
 import { getVisibleWallBricks } from '@/features/progression/progressionService';
 import { brickOverlayLayout } from '@/rendering/three/plotOverlayLayout';
-import { resolveBrickDisplayColor } from '@/utils/brickColor';
+import { isWallBrickDarkVariant, wallBrickDisplayColor, wallBrickPlacementIndex } from '@/utils/brickColor';
 
 interface BrickWallOverlayProps {
   bricks: Brick[];
@@ -54,9 +54,14 @@ export function BrickWallOverlay({
     <View style={styles.layer} pointerEvents="box-none">
       {wallBricks.map((brick) => {
         const highlighted = highlightBrickId === brick.id;
-        let color = resolveBrickDisplayColor(brick.color);
+        const placementIndex = wallBrickPlacementIndex(brick);
+        let color = wallBrickDisplayColor(brick.color, placementIndex);
         if (highlighted) color = '#ffffff';
         else if (brick.streakRewardLabel) color = '#e8c547';
+
+        const isDark = isWallBrickDarkVariant(placementIndex);
+        const topColor = isDark ? darken(color, 0.04) : lighten(color);
+        const sideColor = darken(color, 0.1);
 
         const layout = brickOverlayLayout(brick, plotScale);
 
@@ -73,7 +78,7 @@ export function BrickWallOverlay({
               style={[
                 styles.topFace,
                 {
-                  backgroundColor: lighten(color),
+                  backgroundColor: topColor,
                   height: layout.topHeightPct,
                   marginLeft: layout.depthSkewLeftPct,
                   marginTop: layout.depthSkewTopPct,
@@ -93,7 +98,7 @@ export function BrickWallOverlay({
               style={[
                 styles.sideFace,
                 {
-                  backgroundColor: darken(color),
+                  backgroundColor: sideColor,
                   width: layout.depthSkewLeftPct,
                   height: layout.frontHeightPct,
                   marginTop: layout.depthSkewTopPct,

@@ -20,8 +20,8 @@ const IDLE_BEFORE_SHOW_MS = 900;
 /** Extra buffer after interactions settle. */
 const AFTER_INTERACTIONS_MS = 500;
 
-/** Android crashes with nested NavigationContainer when the unlock overlay mounts during rapid taps. */
-const SHOW_UNLOCK_OVERLAY = Platform.OS !== 'android';
+/** Android: no celebration UI or store updates (NavigationContainer crash). */
+const CELEBRATION_ENABLED = Platform.OS !== 'android';
 
 function playUnlockFeedback() {
   const { hapticsEnabled, sfxEnabled } = useSettingsStore.getState().settings;
@@ -38,10 +38,6 @@ function flushCelebration(set: (partial: Partial<CelebrationState>) => void) {
   pendingUnlocks = [];
   if (batch.length === 0) return;
 
-  if (!SHOW_UNLOCK_OVERLAY) {
-    return;
-  }
-
   InteractionManager.runAfterInteractions(() => {
     setTimeout(() => {
       set({ active: true, unlocks: batch });
@@ -53,14 +49,11 @@ export const useCelebrationStore = create<CelebrationState>((set) => ({
   active: false,
   unlocks: [],
   trigger: (unlocks) => {
-    if (unlocks.length === 0) return;
+    if (unlocks.length === 0 || !CELEBRATION_ENABLED) return;
 
     playUnlockFeedback();
-    pendingUnlocks.push(...unlocks);
 
-    if (!SHOW_UNLOCK_OVERLAY) {
-      return;
-    }
+    pendingUnlocks.push(...unlocks);
 
     if (showTimer) clearTimeout(showTimer);
     showTimer = setTimeout(() => {

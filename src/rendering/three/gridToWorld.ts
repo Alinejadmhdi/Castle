@@ -48,21 +48,35 @@ export function getWallWorldZ(plotScale = 1): number {
   return getWallGreenBorderZ(plotScale);
 }
 
-/** Wall row origin (gridX=0) — scaled from HQ toward green border by hqDistanceFactor. */
+/** Wall row origin (gridX=0) — Z from hqDistanceFactor; X centered on HQ when enabled. */
 function getWallRowOrigin(
   plotScale: number,
   brickW: number,
   gap: number,
+  cellW: number,
 ): { x: number; z: number } {
-  const { half } = getSoilDimensions(plotScale);
+  const hqX = HQ_LAYOUT.worldX * plotScale;
+  const hqZ = HQ_LAYOUT.worldZ * plotScale;
   const borderZ = getWallGreenBorderZ(plotScale);
+  const t = WALL_LAYOUT.hqDistanceFactor;
+  const baseZ = hqZ + (borderZ - hqZ) * t + WALL_LAYOUT.nudgeZ * plotScale;
+  const midIdx = (SOIL_GRID_COLUMNS - 1) / 2;
+
+  if (WALL_LAYOUT.centerOnHq) {
+    return {
+      x:
+        hqX +
+        WALL_LAYOUT.offsetX * plotScale -
+        midIdx * cellW * WALL_LAYOUT.rowStepX,
+      z: baseZ - midIdx * WALL_LAYOUT.rowStepZ,
+    };
+  }
+
+  const { half } = getSoilDimensions(plotScale);
   const leftOnBorder = {
     x: -half + gap + brickW / 2 + WALL_LAYOUT.offsetX * plotScale,
     z: borderZ,
   };
-  const hqX = HQ_LAYOUT.worldX * plotScale;
-  const hqZ = HQ_LAYOUT.worldZ * plotScale;
-  const t = WALL_LAYOUT.hqDistanceFactor;
   return {
     x: hqX + (leftOnBorder.x - hqX) * t,
     z: hqZ + (leftOnBorder.z - hqZ) * t,
@@ -87,9 +101,9 @@ export function gridToWorldPosition(
   const cellW = w + gap;
   const brickW = w * frac;
 
-  const origin = getWallRowOrigin(plotScale, brickW, gap);
-  const x = origin.x + gridX * cellW;
-  const z = origin.z;
+  const origin = getWallRowOrigin(plotScale, brickW, gap, cellW);
+  const x = origin.x + gridX * cellW * WALL_LAYOUT.rowStepX;
+  const z = origin.z + gridX * WALL_LAYOUT.rowStepZ;
   const y = 0.04 + gridY * (h + gap) + h / 2;
 
   return { x, y, z, scaleX: frac };

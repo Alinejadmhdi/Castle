@@ -8,9 +8,9 @@ import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { formatErrorForUser } from '@/utils/formatError';
 
-import { BRICK_DISPLAY_COLOR } from '@/rendering/three/constants';
+import { BRICK_PRESET_COLORS } from '@/constants/brickColors';
 
-const PRESET_COLORS = [BRICK_DISPLAY_COLOR, '#1E40AF', '#C2410C', '#15803D', '#7C3AED', '#CA8A04', '#0D9488'];
+const PRESET_COLORS = [...BRICK_PRESET_COLORS];
 
 export default function NewCategoryScreen() {
   const router = useRouter();

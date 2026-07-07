@@ -2,9 +2,14 @@ import { useRef } from 'react';
 import type { Mesh } from 'three';
 import * as THREE from 'three';
 import type { Brick } from '@/types';
-import { BRICK_DEPTH, BRICK_HEIGHT, BRICK_WIDTH } from '@/rendering/three/constants';
+import {
+  BRICK_DEPTH,
+  BRICK_HEIGHT,
+  BRICK_WIDTH,
+  BRICK_VISUAL_INSET,
+} from '@/rendering/three/constants';
 import { gridToWorldPosition } from '@/rendering/three/gridToWorld';
-import { resolveBrickDisplayColor } from '@/utils/brickColor';
+import { wallBrickDisplayColor, wallBrickPlacementIndex } from '@/utils/brickColor';
 
 interface BrickMeshProps {
   brick: Brick;
@@ -22,10 +27,10 @@ export function BrickMesh({ brick, plotScale, highlighted, onPress }: BrickMeshP
     plotScale,
   );
 
-  const w = BRICK_WIDTH * plotScale * scaleX;
-  const h = BRICK_HEIGHT * plotScale;
-  const d = BRICK_DEPTH * plotScale;
-  let color = resolveBrickDisplayColor(brick.color);
+  const w = BRICK_WIDTH * plotScale * scaleX * BRICK_VISUAL_INSET;
+  const h = BRICK_HEIGHT * plotScale * BRICK_VISUAL_INSET;
+  const d = BRICK_DEPTH * plotScale * BRICK_VISUAL_INSET;
+  let color = wallBrickDisplayColor(brick.color, wallBrickPlacementIndex(brick));
   if (highlighted) color = '#ffffff';
   else if (brick.streakRewardLabel) color = '#e8c547';
 

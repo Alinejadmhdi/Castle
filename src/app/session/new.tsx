@@ -14,7 +14,9 @@ import type { SessionTimerMode } from '@/types';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { showFocusPrimerIfNeeded } from '@/utils/focusPrimer';
-import { BRICK_DISPLAY_COLOR } from '@/rendering/three/constants';
+import { BRICK_PRESET_COLORS } from '@/constants/brickColors';
+
+const COLORS = [...BRICK_PRESET_COLORS];
 
 const PRESET_DURATIONS = [
   { label: '25 min', ms: 25 * 60 * 1000 },
@@ -22,8 +24,6 @@ const PRESET_DURATIONS = [
   { label: '2 hours', ms: 2 * 60 * 60 * 1000 },
   { label: '4 hours', ms: 4 * 60 * 60 * 1000 },
 ];
-
-const COLORS = [BRICK_DISPLAY_COLOR, '#1E40AF', '#C2410C', '#15803D', '#7C3AED', '#CA8A04'];
 
 function parseCustomDurationMs(hours: string, minutes: string): number {
   const h = Math.max(0, parseInt(hours, 10) || 0);

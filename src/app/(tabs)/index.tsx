@@ -7,7 +7,7 @@ import { useTimerStore } from '@/store/timerStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { SettlementPlot } from '@/components/map/SettlementPlot';
 import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
-import { MapActionPanel, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
+import { MapActionPanel, type MapPanelMode, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
@@ -24,7 +24,7 @@ export default function LifeMapScreen() {
   const loadingIds = useMapSceneStore((s) => s.loadingIds);
   const applyUpdate = useMapSceneStore((s) => s.applyUpdate);
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
-  const [panel, setPanel] = useState<{ categoryId: string } | null>(null);
+  const [panel, setPanel] = useState<{ categoryId: string; mode: MapPanelMode } | null>(null);
 
   const categoryIdsKey = useMemo(
     () => categories.map((c) => c.id).join(','),
@@ -63,7 +63,7 @@ export default function LifeMapScreen() {
   }, [isFocused, session?.status]);
 
   useEffect(() => {
-    if (!isFocused) return;
+    if (!isFocused || panel) return;
     for (const cat of categories) {
       const expected = Math.floor(cat.totalBrickValue);
       const loaded = scenes[cat.id]?.bricks?.length ?? 0;
@@ -72,7 +72,7 @@ export default function LifeMapScreen() {
         break;
       }
     }
-  }, [isFocused, categories, scenes, refreshCategory]);
+  }, [isFocused, panel, categories, scenes, refreshCategory]);
 
   const panelCategory = useMemo(() => {
     if (session) {
@@ -89,11 +89,25 @@ export default function LifeMapScreen() {
 
   const showPanel = panelCategory != null && (panel != null || session != null || lastResult != null);
 
+  const panelMode =
+    panel?.mode ?? (panelCategory?.type === 'miniature' ? 'resist' : 'focus-setup');
+
   const activePlotCategoryId = session?.categoryId ?? null;
 
-  function openBrickPanel(categoryId: string) {
+  function openFocus(categoryId: string) {
+    const timer = useTimerStore.getState();
+    const { session: activeSession } = timer;
+    if (activeSession?.status === 'active' && activeSession.categoryId !== categoryId) return;
+    if (activeSession?.status === 'paused' && activeSession.categoryId !== categoryId) {
+      void timer.abandon();
+    }
+    timer.clearResult();
+    setPanel({ categoryId, mode: 'focus-setup' });
+  }
+
+  function openResist(categoryId: string) {
     useMapSceneStore.getState().seedEmptyScene(categoryId);
-    setPanel({ categoryId });
+    setPanel({ categoryId, mode: 'resist' });
     void loadCategory(categoryId);
   }
 
@@ -193,9 +207,11 @@ export default function LifeMapScreen() {
                         ? 'Focusing…'
                         : cat.type === 'miniature'
                           ? 'Log Resist'
-                          : 'Place Brick'
+                          : 'Focus'
                     }
-                    onPress={() => openBrickPanel(cat.id)}
+                    onPress={() =>
+                      cat.type === 'miniature' ? openResist(cat.id) : openFocus(cat.id)
+                    }
                     style={styles.focusBtn}
                     disabled={!!session && session.categoryId !== cat.id}
                   />
@@ -216,6 +232,7 @@ export default function LifeMapScreen() {
       {showPanel && panelCategory && (
         <MapActionPanel
           category={panelCategory}
+          mode={panelMode}
           onClose={closePanel}
           onEndSession={dismissPanel}
           onSceneRefresh={refreshCategoryScene}

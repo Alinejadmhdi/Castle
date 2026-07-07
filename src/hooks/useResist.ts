@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, InteractionManager } from 'react-native';
-import type { Brick, BuildingInstance, UnlockEvent } from '@/types';
+import { Alert, InteractionManager, Platform } from 'react-native';
+import type { Brick, BuildingInstance, Category, UnlockEvent } from '@/types';
 import { logResistBrickWithRetry } from '@/features/bricks/brickService';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
@@ -13,11 +13,20 @@ interface UseResistOptions {
   onSceneUpdate?: (categoryId: string, bricks: Brick[], buildings?: BuildingInstance[]) => void;
 }
 
+function dedupeBuildings(buildings: BuildingInstance[]): BuildingInstance[] {
+  const seen = new Set<string>();
+  return buildings.filter((b) => {
+    if (seen.has(b.id)) return false;
+    seen.add(b.id);
+    return true;
+  });
+}
+
 /** One DB write per brick, queued so rapid taps are never dropped. */
 export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResistOptions) {
   const syncCategory = useCategoryStore((s) => s.syncCategory);
   const refreshOne = useCategoryStore((s) => s.refreshOne);
-  const applyUpdate = useMapSceneStore((s) => s.applyUpdate);
+  const applyBatchUpdate = useMapSceneStore((s) => s.applyBatchUpdate);
   const scheduleSyncAfterPlacement = useMapSceneStore((s) => s.scheduleSyncAfterPlacement);
   const triggerCelebration = useCelebrationStore((s) => s.trigger);
 
@@ -41,7 +50,9 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
       const message = `[${phase}] ${context}\n\n${detail}`;
       console.error('[Resist]', message, err);
       setError(message);
-      Alert.alert('Could not save brick', message);
+      if (Platform.OS !== 'android') {
+        Alert.alert('Could not save brick', message);
+      }
     },
     [categoryId, categoryType],
   );
@@ -55,6 +66,10 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
     }
     processingRef.current = true;
 
+    const placedBricks: Brick[] = [];
+    const placedBuildings: BuildingInstance[] = [];
+    let latestCategory: Category | null = null;
+
     try {
       while (queueRef.current > 0) {
         queueRef.current -= 1;
@@ -64,24 +79,16 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
           console.log('[Resist] saving brick', categoryId, categoryType);
           const result = await logResistBrickWithRetry(categoryId);
           console.log('[Resist] saved brick ok', result.bricks[0]?.id, 'total', result.category.totalBrickValue);
-          syncCategory(result.category);
+          latestCategory = result.category;
           setSessionCount((c) => c + 1);
 
           const brick = result.bricks[0];
           if (brick) {
+            placedBricks.push(brick);
             const newBuildings = result.unlocks
               .map((u) => u.buildingInstance)
               .filter((b): b is BuildingInstance => b != null);
-
-            if (onSceneUpdateRef.current) {
-              onSceneUpdateRef.current(categoryId, [brick], newBuildings);
-            } else {
-              applyUpdate(categoryId, { brick, buildings: newBuildings });
-            }
-
-            if (newBuildings.length > 0) {
-              scheduleSyncAfterPlacement(categoryId, newBuildings);
-            }
+            placedBuildings.push(...newBuildings);
           }
 
           if (result.unlocks.length > 0) {
@@ -98,9 +105,25 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
         }
       }
 
+      if (placedBricks.length > 0) {
+        const buildings = dedupeBuildings(placedBuildings);
+        if (onSceneUpdateRef.current) {
+          onSceneUpdateRef.current(categoryId, placedBricks, buildings);
+        } else {
+          applyBatchUpdate(categoryId, placedBricks, buildings);
+        }
+        if (buildings.length > 0) {
+          scheduleSyncAfterPlacement(categoryId, buildings);
+        }
+      }
+
+      if (latestCategory) {
+        syncCategory(latestCategory);
+      }
+
       const unlockBatch = pendingUnlocksRef.current;
       pendingUnlocksRef.current = [];
-      if (unlockBatch.length > 0) {
+      if (unlockBatch.length > 0 && Platform.OS !== 'android') {
         InteractionManager.runAfterInteractions(() => {
           triggerCelebration(unlockBatch);
         });
@@ -114,7 +137,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
     categoryType,
     syncCategory,
     refreshOne,
-    applyUpdate,
+    applyBatchUpdate,
     scheduleSyncAfterPlacement,
     triggerCelebration,
     reportFailure,

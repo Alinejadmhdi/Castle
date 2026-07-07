@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Brick, FocusSession, SessionTimerMode, UnlockEvent } from '@/types';
+import { Platform } from 'react-native';
 import { generateId, msToBrickValue } from '@/utils';
 import {
   getActiveSession,
@@ -238,7 +239,7 @@ export const useTimerStore = create<TimerState>((set, get) => {
 
       if (result) {
         await useCategoryStore.getState().refreshOne(session.categoryId);
-        if (result.unlocks.length > 0) {
+        if (result.unlocks.length > 0 && Platform.OS !== 'android') {
           useCelebrationStore.getState().trigger(result.unlocks);
         }
         set({
