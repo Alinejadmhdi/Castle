@@ -33,6 +33,31 @@ async function openNativeDatabase(): Promise<NativeDb> {
         if (!cols.some((c) => c.name === 'timer_mode')) {
           await db.execAsync(`ALTER TABLE sessions ADD COLUMN timer_mode TEXT DEFAULT 'countdown'`);
         }
+        if (row.version < 3) {
+          const dailyCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(daily_builds)');
+          if (!dailyCols.some((c) => c.name === 'starting_brick_value')) {
+            await db.execAsync(
+              `ALTER TABLE daily_builds ADD COLUMN starting_brick_value REAL NOT NULL DEFAULT 0`,
+            );
+            const openDays = await db.getAllAsync<{
+              id: string;
+              category_id: string;
+              brick_value_today: number;
+            }>(`SELECT id, category_id, brick_value_today FROM daily_builds WHERE sealed = 0`);
+            for (const daily of openDays) {
+              const cat = await db.getFirstAsync<{ total_brick_value: number }>(
+                'SELECT total_brick_value FROM categories WHERE id = ?',
+                [daily.category_id],
+              );
+              if (!cat) continue;
+              const starting = Math.max(0, cat.total_brick_value - daily.brick_value_today);
+              await db.runAsync(
+                'UPDATE daily_builds SET starting_brick_value = ? WHERE id = ?',
+                [starting, daily.id],
+              );
+            }
+          }
+        }
         await db.runAsync('UPDATE schema_version SET version = ?', [SCHEMA_VERSION]);
       }
       nativeDb = db;

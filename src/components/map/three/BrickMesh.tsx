@@ -8,7 +8,7 @@ import {
   BRICK_VISUAL_INSET,
 } from '@/rendering/three/constants';
 import { gridToWorldPosition } from '@/rendering/three/gridToWorld';
-import { wallBrickDisplayColor, wallBrickPlacementIndex } from '@/utils/brickColor';
+import { wallBrickDisplayColor } from '@/utils/brickColor';
 
 interface BrickMeshProps {
   brick: Brick;
@@ -41,7 +41,7 @@ export function BrickMesh({ brick, plotScale, highlighted, onPress }: BrickMeshP
     >
       <boxGeometry args={[w, h, d]} />
       <meshToonMaterial
-        color={wallBrickDisplayColor(brick.color, wallBrickPlacementIndex(brick))}
+        color={wallBrickDisplayColor(brick.color, brick.gridX, brick.gridY)}
         emissive={highlighted ? '#ffffff' : brick.streakRewardLabel ? '#c9a227' : '#000000'}
         emissiveIntensity={highlighted ? 0.35 : brick.streakRewardLabel ? 0.2 : 0}
       />

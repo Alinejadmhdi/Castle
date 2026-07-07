@@ -95,6 +95,7 @@ interface DailyRow {
   category_id: string;
   date: string;
   brick_value_today: number;
+  starting_brick_value: number;
   brick_ids: string;
   structure_key: string | null;
   sealed: number;
@@ -106,6 +107,7 @@ function mapDaily(row: DailyRow): DailyBuild {
     categoryId: row.category_id,
     date: row.date,
     brickValueToday: row.brick_value_today,
+    startingBrickValue: row.starting_brick_value ?? 0,
     brickIds: JSON.parse(row.brick_ids) as string[],
     structureKey: row.structure_key,
     sealed: row.sealed === 1,
@@ -115,6 +117,7 @@ function mapDaily(row: DailyRow): DailyBuild {
 export async function getOrCreateDailyBuild(
   categoryId: string,
   date: string,
+  startingBrickValue = 0,
 ): Promise<DailyBuild> {
   const db = await getDatabase();
   const existing = await db.getFirstAsync<DailyRow>(
@@ -128,14 +131,15 @@ export async function getOrCreateDailyBuild(
     categoryId,
     date,
     brickValueToday: 0,
+    startingBrickValue,
     brickIds: [],
     structureKey: null,
     sealed: false,
   };
   await db.runAsync(
-    `INSERT INTO daily_builds (id, category_id, date, brick_value_today, brick_ids, structure_key, sealed)
-     VALUES (?, ?, ?, 0, '[]', NULL, 0)`,
-    [daily.id, categoryId, date],
+    `INSERT INTO daily_builds (id, category_id, date, brick_value_today, starting_brick_value, brick_ids, structure_key, sealed)
+     VALUES (?, ?, ?, 0, ?, '[]', NULL, 0)`,
+    [daily.id, categoryId, date, startingBrickValue],
   );
   return daily;
 }
@@ -143,9 +147,10 @@ export async function getOrCreateDailyBuild(
 export async function updateDailyBuild(daily: DailyBuild): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
-    `UPDATE daily_builds SET brick_value_today=?, brick_ids=?, structure_key=?, sealed=? WHERE id=?`,
+    `UPDATE daily_builds SET brick_value_today=?, starting_brick_value=?, brick_ids=?, structure_key=?, sealed=? WHERE id=?`,
     [
       daily.brickValueToday,
+      daily.startingBrickValue,
       JSON.stringify(daily.brickIds),
       daily.structureKey,
       daily.sealed ? 1 : 0,
@@ -207,6 +212,15 @@ export async function getBuildingById(id: string): Promise<BuildingInstance | nu
     [id],
   );
   return row ? mapBuilding(row) : null;
+}
+
+export async function getDailyBuildsForDate(date: string): Promise<DailyBuild[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<DailyRow>(
+    'SELECT * FROM daily_builds WHERE date = ?',
+    [date],
+  );
+  return rows.map(mapDaily);
 }
 
 export async function getUnsealedDailyBuildsBefore(date: string): Promise<DailyBuild[]> {

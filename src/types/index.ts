@@ -75,6 +75,8 @@ export interface DailyBuild {
   categoryId: string;
   date: string;
   brickValueToday: number;
+  /** Category total_brick_value at the start of this calendar day. */
+  startingBrickValue: number;
   brickIds: string[];
   structureKey: string | null;
   sealed: boolean;

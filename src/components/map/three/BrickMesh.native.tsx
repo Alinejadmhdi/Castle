@@ -9,7 +9,7 @@ import {
   BRICK_VISUAL_INSET,
 } from '@/rendering/three/constants';
 import { gridToWorldPosition } from '@/rendering/three/gridToWorld';
-import { wallBrickDisplayColor, wallBrickPlacementIndex } from '@/utils/brickColor';
+import { wallBrickDisplayColor } from '@/utils/brickColor';
 
 interface BrickMeshProps {
   brick: Brick;
@@ -30,7 +30,7 @@ export function BrickMesh({ brick, plotScale, highlighted, onPress }: BrickMeshP
   const w = BRICK_WIDTH * plotScale * scaleX * BRICK_VISUAL_INSET;
   const h = BRICK_HEIGHT * plotScale * BRICK_VISUAL_INSET;
   const d = BRICK_DEPTH * plotScale * BRICK_VISUAL_INSET;
-  let color = wallBrickDisplayColor(brick.color, wallBrickPlacementIndex(brick));
+  let color = wallBrickDisplayColor(brick.color, brick.gridX, brick.gridY);
   if (highlighted) color = '#ffffff';
   else if (brick.streakRewardLabel) color = '#e8c547';
 

@@ -349,8 +349,8 @@ async function addBrickToCategoryLocked(
   const count = await getBrickCount(categoryId);
 
   let dailyBuildId: string | null = null;
+  const daily = await getOrCreateDailyBuild(categoryId, today, previousValue);
   if (!isMiniature && category.type === 'standard') {
-    const daily = await getOrCreateDailyBuild(categoryId, today);
     daily.brickValueToday += brickValue;
     dailyBuildId = daily.id;
     await updateDailyBuild(daily);

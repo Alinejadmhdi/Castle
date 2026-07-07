@@ -2,7 +2,7 @@
   "expo": {
     "name": "Castle",
     "slug": "lifes-castle",
-    "version": "0.3.18",
+    "version": "0.3.21",
     "orientation": "portrait",
     "scheme": "lifescastle",
     "userInterfaceStyle": "dark",
@@ -24,7 +24,7 @@
       },
       "package": "com.lifescastle.app",
       "label": "Castle",
-      "versionCode": 310,
+      "versionCode": 321,
       "permissions": ["VIBRATE"],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",

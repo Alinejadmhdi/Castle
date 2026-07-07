@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS settings (
@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS daily_builds (
   category_id TEXT NOT NULL REFERENCES categories(id),
   date TEXT NOT NULL,
   brick_value_today REAL NOT NULL DEFAULT 0,
+  starting_brick_value REAL NOT NULL DEFAULT 0,
   brick_ids TEXT NOT NULL DEFAULT '[]',
   structure_key TEXT,
   sealed INTEGER NOT NULL DEFAULT 0,

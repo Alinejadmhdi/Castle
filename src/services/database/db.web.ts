@@ -324,6 +324,7 @@ function runQuery(sql: string, params: unknown[] = []): number {
       categoryId: p[1] as string,
       date: p[2] as string,
       brickValueToday: 0,
+      startingBrickValue: (p[4] as number) ?? 0,
       brickIds: [],
       structureKey: null,
       sealed: false,
@@ -339,9 +340,10 @@ function runQuery(sql: string, params: unknown[] = []): number {
       store.daily_builds[idx] = {
         ...store.daily_builds[idx],
         brickValueToday: p[0] as number,
-        brickIds: JSON.parse(p[1] as string),
-        structureKey: p[2] as string | null,
-        sealed: p[3] === 1,
+        startingBrickValue: p[1] as number,
+        brickIds: JSON.parse(p[2] as string),
+        structureKey: p[3] as string | null,
+        sealed: p[4] === 1,
       };
       saveStore(store);
     }
@@ -591,11 +593,26 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         category_id: d.categoryId,
         date: d.date,
         brick_value_today: d.brickValueToday,
+        starting_brick_value: d.startingBrickValue ?? 0,
         brick_ids: JSON.stringify(d.brickIds),
         structure_key: d.structureKey,
         sealed: d.sealed ? 1 : 0,
       },
     ] as T[];
+  }
+  if (sql.includes('FROM daily_builds WHERE date = ?')) {
+    return store.daily_builds
+      .filter((x) => x.date === params[0])
+      .map((d) => ({
+        id: d.id,
+        category_id: d.categoryId,
+        date: d.date,
+        brick_value_today: d.brickValueToday,
+        starting_brick_value: d.startingBrickValue ?? 0,
+        brick_ids: JSON.stringify(d.brickIds),
+        structure_key: d.structureKey,
+        sealed: d.sealed ? 1 : 0,
+      })) as T[];
   }
   if (sql.includes('FROM schema_version')) {
     return [{ version: store.schema_version }] as T[];

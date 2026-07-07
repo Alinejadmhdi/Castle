@@ -3,7 +3,7 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import type { Brick, CategoryType } from '@/types';
 import { getVisibleWallBricks } from '@/features/progression/progressionService';
 import { brickOverlayLayout } from '@/rendering/three/plotOverlayLayout';
-import { isWallBrickDarkVariant, wallBrickDisplayColor, wallBrickPlacementIndex } from '@/utils/brickColor';
+import { isWallBrickDarkVariant, wallBrickDisplayColor } from '@/utils/brickColor';
 
 interface BrickWallOverlayProps {
   bricks: Brick[];
@@ -54,12 +54,11 @@ export function BrickWallOverlay({
     <View style={styles.layer} pointerEvents="box-none">
       {wallBricks.map((brick) => {
         const highlighted = highlightBrickId === brick.id;
-        const placementIndex = wallBrickPlacementIndex(brick);
-        let color = wallBrickDisplayColor(brick.color, placementIndex);
+        let color = wallBrickDisplayColor(brick.color, brick.gridX, brick.gridY);
         if (highlighted) color = '#ffffff';
         else if (brick.streakRewardLabel) color = '#e8c547';
 
-        const isDark = isWallBrickDarkVariant(placementIndex);
+        const isDark = isWallBrickDarkVariant(brick.gridX, brick.gridY);
         const topColor = isDark ? darken(color, 0.04) : lighten(color);
         const sideColor = darken(color, 0.1);
 

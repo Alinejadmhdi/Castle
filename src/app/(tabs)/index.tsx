@@ -12,6 +12,13 @@ import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
 import { confirmAction } from '@/utils/confirm';
+import {
+  bricksAddedToday,
+  ensureAllTodayDailySnapshots,
+} from '@/features/daily/dailySnapshotService';
+import { getDailyBuildsForDate } from '@/services/database/buildingRepository';
+import { formatBrickValue, todayLocalDate } from '@/utils';
+import type { DailyBuild } from '@/types';
 
 export default function LifeMapScreen() {
   const router = useRouter();
@@ -25,6 +32,7 @@ export default function LifeMapScreen() {
   const applyUpdate = useMapSceneStore((s) => s.applyUpdate);
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
   const [panel, setPanel] = useState<{ categoryId: string; mode: MapPanelMode } | null>(null);
+  const [todayDaily, setTodayDaily] = useState<Record<string, DailyBuild>>({});
 
   const categoryIdsKey = useMemo(
     () => categories.map((c) => c.id).join(','),
@@ -42,16 +50,39 @@ export default function LifeMapScreen() {
     [applyUpdate, refreshCategory],
   );
 
+  const refreshTodayCounts = useCallback(async (categoryIds: string[]) => {
+    if (categoryIds.length === 0) {
+      setTodayDaily({});
+      return;
+    }
+    await ensureAllTodayDailySnapshots(categoryIds);
+    const dailies = await getDailyBuildsForDate(todayLocalDate());
+    const map: Record<string, DailyBuild> = {};
+    for (const d of dailies) {
+      map[d.categoryId] = d;
+    }
+    setTodayDaily(map);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       const ids = categoryIdsKey ? categoryIdsKey.split(',') : [];
       if (ids.length === 0) return;
       void loadAll(ids);
+      void refreshTodayCounts(ids);
       const timer = useTimerStore.getState();
       timer.ensureTicking();
       void timer.syncFromClock();
-    }, [categoryIdsKey, loadAll]),
+    }, [categoryIdsKey, loadAll, refreshTodayCounts]),
   );
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const ids = categories.map((c) => c.id);
+    if (ids.length > 0) {
+      void refreshTodayCounts(ids);
+    }
+  }, [isFocused, categories, lastResult, refreshTodayCounts]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -158,6 +189,7 @@ export default function LifeMapScreen() {
             const scene = scenes[cat.id];
             const sceneLoading = loadingIds[cat.id] === true;
             const checkpoint = getCheckpointProgress(cat.totalBrickValue, cat.type);
+            const addedToday = bricksAddedToday(todayDaily[cat.id] ?? null, cat.totalBrickValue);
             const showPlot =
               isFocused && (activePlotCategoryId == null || activePlotCategoryId === cat.id);
             return (
@@ -165,6 +197,9 @@ export default function LifeMapScreen() {
                 <View style={styles.plotHeader}>
                   <View style={styles.plotHeaderText}>
                     <Text style={styles.plotName}>{cat.name}</Text>
+                    <Text style={styles.plotToday}>
+                      +{formatBrickValue(addedToday)} brick{addedToday === 1 ? '' : 's'} today
+                    </Text>
                     <Text style={styles.plotMeta}>
                       {checkpoint.label} toward {checkpoint.nextStageName}
                       {' · '}streak {cat.currentStreak}
@@ -274,6 +309,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4a9238',
   },
   plotName: { color: theme.colors.text, fontSize: 18, fontWeight: '600' },
+  plotToday: { color: theme.colors.primary, fontSize: 14, fontWeight: '600', marginTop: 2 },
   plotMeta: { color: theme.colors.textMuted, fontSize: 13, marginTop: 2 },
   delete: { color: theme.colors.danger, fontSize: 14, fontWeight: '600' },
   plotActions: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md },

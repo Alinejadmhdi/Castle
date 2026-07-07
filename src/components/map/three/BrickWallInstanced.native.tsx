@@ -11,7 +11,7 @@ import {
   BRICK_VISUAL_INSET,
 } from '@/rendering/three/constants';
 import { gridToWorldPosition } from '@/rendering/three/gridToWorld';
-import { wallBrickDisplayColor, wallBrickPlacementIndex } from '@/utils/brickColor';
+import { wallBrickDisplayColor } from '@/utils/brickColor';
 import { BrickMesh } from './BrickMesh';
 
 interface BrickWallInstancedProps {
@@ -42,7 +42,7 @@ function brighten(hex: string, amount: number): THREE.Color {
 }
 
 function brickDisplayColor(brick: Brick): THREE.Color {
-  const base = wallBrickDisplayColor(brick.color, wallBrickPlacementIndex(brick));
+  const base = wallBrickDisplayColor(brick.color, brick.gridX, brick.gridY);
   return brick.streakRewardLabel ? brighten(base, 0.12) : tempColor.set(base);
 }
 
