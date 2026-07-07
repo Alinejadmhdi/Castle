@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { Brick, FocusSession, SessionTimerMode, UnlockEvent } from '@/types';
-import { Platform } from 'react-native';
 import { generateId, msToBrickValue } from '@/utils';
 import {
   getActiveSession,
@@ -53,6 +52,16 @@ function segmentElapsedMs(session: FocusSession, activeSinceMs: number | null): 
 
 function clearTickInterval(interval: ReturnType<typeof setInterval> | null) {
   if (interval) clearInterval(interval);
+}
+
+let completingSession = false;
+
+function cappedElapsedMs(session: FocusSession, activeSinceMs: number | null): number {
+  const elapsedMs = segmentElapsedMs(session, activeSinceMs);
+  if (session.timerMode === 'stopwatch' || session.plannedDurationMs <= 0) {
+    return elapsedMs;
+  }
+  return Math.min(elapsedMs, session.plannedDurationMs);
 }
 
 export const useTimerStore = create<TimerState>((set, get) => {
@@ -214,52 +223,62 @@ export const useTimerStore = create<TimerState>((set, get) => {
     },
 
     complete: async () => {
+      if (completingSession) return false;
       const { session, tickInterval, activeSinceMs } = get();
-      if (!session) return false;
+      if (!session || session.status === 'completed' || session.status === 'abandoned') {
+        return false;
+      }
+
+      completingSession = true;
       clearTickInterval(tickInterval);
 
-      const elapsedMs = segmentElapsedMs(session, activeSinceMs);
-      const settings = useSettingsStore.getState().settings;
-      const brickValue = msToBrickValue(elapsedMs, settings.fractionalBricksEnabled);
+      try {
+        const elapsedMs = cappedElapsedMs(session, activeSinceMs);
+        const settings = useSettingsStore.getState().settings;
+        const brickValue = msToBrickValue(elapsedMs, settings.fractionalBricksEnabled);
 
-      const updated: FocusSession = {
-        ...session,
-        elapsedMs,
-        endedAt: new Date().toISOString(),
-        status: 'completed',
-        bricksEarned: brickValue,
-      };
-      await updateSession(updated);
+        const updated: FocusSession = {
+          ...session,
+          elapsedMs,
+          endedAt: new Date().toISOString(),
+          status: 'completed',
+          bricksEarned: brickValue,
+        };
+        await updateSession(updated);
+        set({ session: updated, activeSinceMs: null, tickInterval: null, remainingMs: 0 });
 
-      const result = await completeSessionBricks(
-        updated,
-        elapsedMs,
-        settings.fractionalBricksEnabled,
-      );
+        const result = await completeSessionBricks(
+          updated,
+          elapsedMs,
+          settings.fractionalBricksEnabled,
+        );
 
-      if (result) {
-        await useCategoryStore.getState().refreshOne(session.categoryId);
-        if (result.unlocks.length > 0 && Platform.OS !== 'android') {
-          useCelebrationStore.getState().trigger(result.unlocks);
+        if (result) {
+          await useCategoryStore.getState().refreshOne(session.categoryId);
+          if (result.unlocks.length > 0) {
+            useCelebrationStore.getState().trigger(result.unlocks);
+          }
+          set({
+            session: null,
+            remainingMs: 0,
+            tickInterval: null,
+            activeSinceMs: null,
+            lastResult: { bricks: result.bricks, unlocks: result.unlocks },
+          });
+          return true;
         }
+
         set({
           session: null,
           remainingMs: 0,
           tickInterval: null,
           activeSinceMs: null,
-          lastResult: { bricks: result.bricks, unlocks: result.unlocks },
+          lastResult: null,
         });
-        return true;
+        return false;
+      } finally {
+        completingSession = false;
       }
-
-      set({
-        session: null,
-        remainingMs: 0,
-        tickInterval: null,
-        activeSinceMs: null,
-        lastResult: null,
-      });
-      return false;
     },
 
     abandon: async () => {

@@ -81,6 +81,20 @@ export async function getBrickById(id: string): Promise<Brick | null> {
   return row ? mapBrick(row) : null;
 }
 
+export async function getBricksBySessionId(sessionId: string): Promise<Brick[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<BrickRow>(
+    'SELECT * FROM bricks WHERE session_id = ? ORDER BY global_index ASC',
+    [sessionId],
+  );
+  return rows.map(mapBrick);
+}
+
+export async function deleteBrick(id: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM bricks WHERE id = ?', [id]);
+}
+
 export async function getBrickCount(categoryId: string): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ c: number }>(
@@ -216,6 +230,17 @@ export async function getSessionsByCategory(categoryId: string): Promise<FocusSe
     [categoryId],
   );
   return rows.map(mapSession);
+}
+
+export async function getSessionById(id: string): Promise<FocusSession | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<SessionRow>('SELECT * FROM sessions WHERE id = ?', [id]);
+  return row ? mapSession(row) : null;
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM sessions WHERE id = ?', [id]);
 }
 
 export async function getAllSessions(): Promise<FocusSession[]> {

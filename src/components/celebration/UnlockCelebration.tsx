@@ -26,7 +26,9 @@ export function UnlockCelebration({ unlocks, visible, onDismiss }: UnlockCelebra
   return (
     <View style={styles.overlay} pointerEvents="box-none">
       <Pressable style={styles.backdrop} onPress={onDismiss}>
-        <ConfettiOverlay visible />
+        <View style={styles.confettiWrap} pointerEvents="none">
+          <ConfettiOverlay visible />
+        </View>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.emoji}>🏰</Text>
           <Text style={styles.title}>Unlocked!</Text>
@@ -56,12 +58,18 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     overflow: 'hidden',
   },
+  confettiWrap: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 3,
+    elevation: 3,
+  },
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xl,
     alignItems: 'center',
-    zIndex: 2,
+    zIndex: 4,
+    elevation: 4,
   },
   emoji: { fontSize: 48 },
   title: {

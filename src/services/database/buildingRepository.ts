@@ -205,6 +205,12 @@ export async function getDailyBuild(
   return row ? mapDaily(row) : null;
 }
 
+export async function getDailyBuildById(id: string): Promise<DailyBuild | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<DailyRow>('SELECT * FROM daily_builds WHERE id = ?', [id]);
+  return row ? mapDaily(row) : null;
+}
+
 export async function getBuildingById(id: string): Promise<BuildingInstance | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<BuildingRow>(

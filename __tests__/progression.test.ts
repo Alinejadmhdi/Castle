@@ -5,7 +5,7 @@ import {
 import { getDailyStructureForHours } from '../src/constants/dailyBuildings';
 import { getCompoundProgress, getStageForBrickValue, getVisibleWallBricks } from '../src/features/progression/progressionService';
 import { updateStreak } from '../src/features/streaks/streakService';
-import { msToBrickValue } from '../src/utils';
+import { msToBrickValue, splitBrickValue } from '../src/utils';
 
 describe('msToBrickValue', () => {
   it('converts 1 hour to 1 brick', () => {
@@ -18,6 +18,20 @@ describe('msToBrickValue', () => {
 
   it('floors when fractional disabled', () => {
     expect(msToBrickValue(5_400_000, false)).toBe(1);
+  });
+});
+
+describe('splitBrickValue', () => {
+  it('splits 2 hours into two full bricks', () => {
+    expect(splitBrickValue(2)).toEqual([1, 1]);
+  });
+
+  it('splits fractional remainder', () => {
+    expect(splitBrickValue(1.5)).toEqual([1, 0.5]);
+  });
+
+  it('floors when fractional disabled', () => {
+    expect(splitBrickValue(2.7, false)).toEqual([1, 1]);
   });
 });
 

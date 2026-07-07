@@ -5,7 +5,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 
 /**
  * Strict mode abandons when the app leaves the foreground.
- * Soft mode keeps counting via wall-clock time (sync on return).
+ * Soft and free keep counting via wall-clock time (sync on return).
  */
 export function useFocusSessionAppState(onAbandon?: () => void) {
   const { session, abandon, syncFromClock } = useTimerStore();

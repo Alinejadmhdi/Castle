@@ -121,12 +121,12 @@ export function MapActionPanel({
 
   useEffect(() => {
     if (!showComplete || !lastResult) return;
-    const brick = lastResult.bricks[0];
-    if (!brick) return;
-    const newBuildings = lastResult.unlocks
-      .map((u) => u.buildingInstance)
-      .filter((b): b is BuildingInstance => b != null);
-    onSceneRefresh(category.id, { brick, buildings: newBuildings });
+    onSceneRefresh(category.id, {
+      bricks: lastResult.bricks,
+      buildings: lastResult.unlocks
+        .map((u) => u.buildingInstance)
+        .filter((b): b is BuildingInstance => b != null),
+    });
   }, [showComplete, category.id, lastResult, onSceneRefresh]);
 
   function resolvedDurationMs(): number {
@@ -168,7 +168,10 @@ export function MapActionPanel({
   if (showActive && session) {
     const isPaused = session.status === 'paused';
     const isStopwatch = session.timerMode === 'stopwatch';
-    const brickPreview = msToBrickValue(remainingMs, settings.fractionalBricksEnabled);
+    const elapsedMs = isStopwatch
+      ? remainingMs
+      : Math.max(0, session.plannedDurationMs - remainingMs);
+    const brickPreview = msToBrickValue(elapsedMs, settings.fractionalBricksEnabled);
 
     return (
       <View style={styles.panel}>

@@ -123,7 +123,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
 
       const unlockBatch = pendingUnlocksRef.current;
       pendingUnlocksRef.current = [];
-      if (unlockBatch.length > 0 && Platform.OS !== 'android') {
+      if (unlockBatch.length > 0) {
         InteractionManager.runAfterInteractions(() => {
           triggerCelebration(unlockBatch);
         });

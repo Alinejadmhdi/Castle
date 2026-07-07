@@ -11,6 +11,7 @@ import { SettlementPlot } from '@/components/map/SettlementPlot';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { formatBrickValue, msToBrickValue } from '@/utils';
+import { focusModeLabel } from '@/utils/formatSession';
 
 function formatTime(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
@@ -66,7 +67,10 @@ export default function ActiveSessionScreen() {
   const isStopwatch = session.timerMode === 'stopwatch';
   const isPaused = session.status === 'paused';
   const displayMs = isStopwatch ? remainingMs : remainingMs;
-  const brickPreview = msToBrickValue(displayMs, settings.fractionalBricksEnabled);
+  const elapsedMs = isStopwatch
+    ? remainingMs
+    : Math.max(0, session.plannedDurationMs - remainingMs);
+  const brickPreview = msToBrickValue(elapsedMs, settings.fractionalBricksEnabled);
 
   return (
     <View style={styles.container}>
@@ -76,14 +80,14 @@ export default function ActiveSessionScreen() {
           buildings={scene?.buildings ?? []}
           scale={1}
           totalBrickValue={category?.totalBrickValue ?? 0}
-          categoryType="miniature"
+          categoryType={category?.type ?? 'standard'}
           wallColor={session.brickColor}
         />
       </View>
 
       <View style={styles.hud}>
         <Text style={styles.mode}>
-          {settings.focusMode === 'strict' ? 'Strict' : 'Soft'} · {isStopwatch ? 'Stopwatch' : 'Countdown'}
+          {focusModeLabel(settings.focusMode)} · {isStopwatch ? 'Stopwatch' : 'Countdown'}
         </Text>
         <Text style={styles.timer}>{formatTime(displayMs)}</Text>
         <Text style={styles.brickPreview}>

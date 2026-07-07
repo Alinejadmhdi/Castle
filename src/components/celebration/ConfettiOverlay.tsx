@@ -12,7 +12,7 @@ import { theme } from '@/constants/theme';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 48;
 const CENTER_X = width / 2;
-const CENTER_Y = height * 0.45;
+const CENTER_Y = height * 0.5;
 
 function Particle({ index, onDone }: { index: number; onDone?: () => void }) {
   const angle = (index / PARTICLE_COUNT) * Math.PI * 2;

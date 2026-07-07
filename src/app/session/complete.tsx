@@ -68,7 +68,10 @@ export default function SessionCompleteScreen() {
       </Animated.View>
       {brick && (
         <Text style={styles.value}>
-          +{formatBrickValue(brick.fractionalValue)} brick-hour placed on your wall
+          +{formatBrickValue(
+            lastResult.bricks.reduce((sum, b) => sum + b.fractionalValue, 0),
+          )}{' '}
+          brick-hour{lastResult.bricks.length === 1 && brick.fractionalValue === 1 ? '' : 's'} placed on your wall
         </Text>
       )}
       {lastResult && lastResult.unlocks.length > 0 && (

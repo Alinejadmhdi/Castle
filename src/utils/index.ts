@@ -8,6 +8,27 @@ export function msToBrickValue(ms: number, fractionalEnabled = true): number {
   return Math.round(raw * 1000) / 1000;
 }
 
+/** Split a focus-session brick total into one record per full hour plus any remainder. */
+export function splitBrickValue(total: number, fractionalEnabled = true): number[] {
+  const chunks: number[] = [];
+  let remaining = Math.round(total * 1000) / 1000;
+  if (remaining <= 0) return chunks;
+
+  if (!fractionalEnabled) {
+    const whole = Math.floor(remaining);
+    for (let i = 0; i < whole; i++) chunks.push(1);
+    return chunks;
+  }
+
+  while (remaining > 0.0001) {
+    const chunk = remaining >= 1 ? 1 : remaining;
+    chunks.push(Math.round(chunk * 1000) / 1000);
+    remaining -= chunk;
+    remaining = Math.round(remaining * 1000) / 1000;
+  }
+  return chunks;
+}
+
 export function brickValueToHours(value: number): number {
   return Math.round(value * 10) / 10;
 }

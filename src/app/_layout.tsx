@@ -76,7 +76,7 @@ export default function RootLayout() {
           </View>
         )}
       </View>
-      {Platform.OS !== 'android' && <CelebrationLayer />}
+      <CelebrationLayer />
     </GestureHandlerRootView>
   );
 }

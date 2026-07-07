@@ -11,7 +11,7 @@ export function showFocusPrimerIfNeeded(onContinue: () => void): void {
   shownThisLaunch = true;
 
   const message =
-    'Your timer keeps running when the screen locks or you switch apps (soft mode).\n\n' +
+    'Free and soft modes keep your timer running when you switch apps or lock the screen.\n\n' +
     'Strict mode cancels the session if you leave the app.\n\n' +
     (Platform.OS === 'android'
       ? 'For reliable timing, disable battery optimization for Life\'s Castle in system settings.'

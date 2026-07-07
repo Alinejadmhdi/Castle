@@ -110,16 +110,18 @@ export default function SettingsScreen() {
         <Text style={styles.title}>Settings</Text>
 
       <Text style={styles.section}>Focus mode</Text>
-      {(['soft', 'strict'] as FocusMode[]).map((mode) => (
+      {(['free', 'soft', 'strict'] as FocusMode[]).map((mode) => (
         <Pressable
           key={mode}
           onPress={() => update({ focusMode: mode })}
           style={[styles.row, settings.focusMode === mode && styles.rowActive]}
         >
           <Text style={styles.rowText}>
-            {mode === 'soft'
-              ? 'Soft — timer runs when screen locks'
-              : 'Strict — leaving app cancels session'}
+            {mode === 'free'
+              ? 'Free — leave anytime, timer keeps going'
+              : mode === 'soft'
+                ? 'Soft — timer runs when screen locks'
+                : 'Strict — leaving app cancels session'}
           </Text>
         </Pressable>
       ))}

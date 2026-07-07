@@ -167,6 +167,12 @@ function runQuery(sql: string, params: unknown[] = []): number {
     return 1;
   }
 
+  if (sql.startsWith('DELETE FROM bricks WHERE id = ?')) {
+    const id = p[0] as string;
+    store.bricks = store.bricks.filter((b) => b.id !== id);
+    saveStore(store);
+    return 1;
+  }
   if (sql.startsWith('DELETE FROM bricks')) {
     store.bricks = store.bricks.filter((b) => b.categoryId !== p[0]);
     saveStore(store);
@@ -190,6 +196,12 @@ function runQuery(sql: string, params: unknown[] = []): number {
   }
   if (sql.startsWith('DELETE FROM daily_builds')) {
     store.daily_builds = store.daily_builds.filter((b) => b.categoryId !== p[0]);
+    saveStore(store);
+    return 1;
+  }
+  if (sql.startsWith('DELETE FROM sessions WHERE id = ?')) {
+    const id = p[0] as string;
+    store.sessions = store.sessions.filter((s) => s.id !== id);
     saveStore(store);
     return 1;
   }
@@ -425,6 +437,28 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         is_miniature: b.isMiniature ? 1 : 0,
       })) as T[];
   }
+  if (sql.includes('FROM bricks WHERE session_id = ?')) {
+    return store.bricks
+      .filter((b) => b.sessionId === params[0])
+      .sort((a, b) => a.globalIndex - b.globalIndex)
+      .map((b) => ({
+        id: b.id,
+        category_id: b.categoryId,
+        color: b.color,
+        session_id: b.sessionId,
+        fractional_value: b.fractionalValue,
+        global_index: b.globalIndex,
+        stage_index: b.stageIndex,
+        position_in_stage: b.positionInStage,
+        daily_build_id: b.dailyBuildId,
+        building_instance_id: b.buildingInstanceId,
+        grid_x: b.gridX,
+        grid_y: b.gridY,
+        streak_reward_label: b.streakRewardLabel,
+        completed_at: b.completedAt,
+        is_miniature: b.isMiniature ? 1 : 0,
+      })) as T[];
+  }
   if (sql.includes('FROM bricks WHERE id = ?')) {
     const b = store.bricks.find((x) => x.id === params[0]);
     if (!b) return [];
@@ -489,6 +523,25 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
   }
   if (sql.includes("status IN ('active', 'paused')")) {
     const s = store.sessions.find((x) => x.status === 'active' || x.status === 'paused');
+    if (!s) return [];
+    return [
+      {
+        id: s.id,
+        category_id: s.categoryId,
+        brick_color: s.brickColor,
+        planned_duration_ms: s.plannedDurationMs,
+        elapsed_ms: s.elapsedMs,
+        started_at: s.startedAt,
+        ended_at: s.endedAt,
+        status: s.status,
+        pause_count: s.pauseCount,
+        bricks_earned: s.bricksEarned,
+        timer_mode: s.timerMode ?? 'countdown',
+      },
+    ] as T[];
+  }
+  if (sql.includes('FROM sessions WHERE id = ?')) {
+    const s = store.sessions.find((x) => x.id === params[0]);
     if (!s) return [];
     return [
       {
@@ -581,6 +634,22 @@ function selectQuery<T>(sql: string, params: unknown[] = []): T[] {
         parent_compound_id: b.parentCompoundId,
         source_instance_ids: JSON.stringify(b.sourceInstanceIds),
       })) as T[];
+  }
+  if (sql.includes('FROM daily_builds WHERE id = ?')) {
+    const d = store.daily_builds.find((x) => x.id === params[0]);
+    if (!d) return [];
+    return [
+      {
+        id: d.id,
+        category_id: d.categoryId,
+        date: d.date,
+        brick_value_today: d.brickValueToday,
+        starting_brick_value: d.startingBrickValue ?? 0,
+        brick_ids: JSON.stringify(d.brickIds),
+        structure_key: d.structureKey,
+        sealed: d.sealed ? 1 : 0,
+      },
+    ] as T[];
   }
   if (sql.includes('FROM daily_builds WHERE category_id = ? AND date = ?')) {
     const d = store.daily_builds.find(

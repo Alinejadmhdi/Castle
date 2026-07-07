@@ -1,4 +1,4 @@
-import { InteractionManager, Platform } from 'react-native';
+import { InteractionManager } from 'react-native';
 import { create } from 'zustand';
 import type { UnlockEvent } from '@/types';
 import * as Haptics from 'expo-haptics';
@@ -20,8 +20,8 @@ const IDLE_BEFORE_SHOW_MS = 900;
 /** Extra buffer after interactions settle. */
 const AFTER_INTERACTIONS_MS = 500;
 
-/** Android: no celebration UI or store updates (NavigationContainer crash). */
-const CELEBRATION_ENABLED = Platform.OS !== 'android';
+/** Celebration overlay — enabled on all platforms. */
+const CELEBRATION_ENABLED = true;
 
 function playUnlockFeedback() {
   const { hapticsEnabled, sfxEnabled } = useSettingsStore.getState().settings;

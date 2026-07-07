@@ -1,4 +1,4 @@
-export type FocusMode = 'strict' | 'soft';
+export type FocusMode = 'strict' | 'soft' | 'free';
 export type CategoryType = 'standard' | 'miniature';
 export type SessionTimerMode = 'countdown' | 'stopwatch';
 export type SessionStatus = 'active' | 'completed' | 'abandoned' | 'paused';

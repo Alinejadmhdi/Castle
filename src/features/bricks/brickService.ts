@@ -11,7 +11,7 @@ import {
 } from '@/features/progression/progressionService';
 import { updateStreak } from '@/features/streaks/streakService';
 import type { Brick, BuildingInstance, Category, FocusSession, UnlockEvent } from '@/types';
-import { generateId, msToBrickValue, todayLocalDate } from '@/utils';
+import { generateId, msToBrickValue, splitBrickValue, todayLocalDate } from '@/utils';
 import { withCategoryLock } from '@/utils/categoryLock';
 import { getAllCategories } from '@/services/database/repositories';
 import {
@@ -568,9 +568,31 @@ export async function completeSessionBricks(
   elapsedMs: number,
   fractionalEnabled: boolean,
 ): Promise<BrickCreationResult | null> {
-  const brickValue = msToBrickValue(elapsedMs, fractionalEnabled);
-  if (brickValue <= 0) return null;
-  return addBrickToCategory(session.categoryId, session.brickColor, brickValue, session.id, false);
+  const totalBrickValue = msToBrickValue(elapsedMs, fractionalEnabled);
+  if (totalBrickValue <= 0) return null;
+
+  const chunks = splitBrickValue(totalBrickValue, fractionalEnabled);
+  if (chunks.length === 0) return null;
+
+  let latest: BrickCreationResult | null = null;
+  const allBricks: Brick[] = [];
+  const allUnlocks: UnlockEvent[] = [];
+
+  for (const chunk of chunks) {
+    latest = await addBrickToCategory(
+      session.categoryId,
+      session.brickColor,
+      chunk,
+      session.id,
+      false,
+    );
+    allBricks.push(...latest.bricks);
+    allUnlocks.push(...latest.unlocks);
+  }
+
+  return latest
+    ? { bricks: allBricks, unlocks: allUnlocks, category: latest.category }
+    : null;
 }
 
 export async function logResistBrick(categoryId: string): Promise<BrickCreationResult> {
