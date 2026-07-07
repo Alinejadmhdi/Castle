@@ -6,7 +6,7 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useTimerStore } from '@/store/timerStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { SettlementPlot } from '@/components/map/SettlementPlot';
-import { SettlementPlotLite } from '@/components/map/SettlementPlotLite';
+import { SettlementPlotPreview } from '@/components/map/SettlementPlotPreview';
 import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
 import { MapActionPanel, type MapPanelMode, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
 import { theme } from '@/constants/theme';
@@ -228,10 +228,18 @@ export default function LifeMapScreen() {
                     />
                   )
                 ) : showLitePlot ? (
-                  <SettlementPlotLite
-                    totalBrickValue={cat.totalBrickValue}
-                    categoryType={cat.type}
-                  />
+                  sceneLoading && !scene ? (
+                    <View style={styles.plotLoading}>
+                      <ActivityIndicator color={theme.colors.primary} />
+                    </View>
+                  ) : (
+                    <SettlementPlotPreview
+                      bricks={scene?.bricks ?? []}
+                      buildings={scene?.buildings ?? []}
+                      totalBrickValue={cat.totalBrickValue}
+                      categoryType={cat.type}
+                    />
+                  )
                 ) : (
                   <MapPlotPlaceholder square />
                 )}

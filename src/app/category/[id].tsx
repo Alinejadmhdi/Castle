@@ -7,7 +7,7 @@ import { removeFocusSessionAndBricks } from '@/features/bricks/sessionRemovalSer
 import { useCategoryStore } from '@/store/categoryStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { confirmAction } from '@/utils/confirm';
-import { formatSessionSummary } from '@/utils/formatSession';
+import { formatSessionSummary, countSessionBricks } from '@/utils/formatSession';
 import { getBuildingsByCategory } from '@/services/database/buildingRepository';
 import { getDailyBuild } from '@/services/database/buildingRepository';
 import { MACRO_BUILDING_STAGES } from '@/constants/buildings';
@@ -45,9 +45,10 @@ export default function CategoryDetailScreen() {
 
   const handleRemoveSession = useCallback(
     (session: FocusSession) => {
+      const placed = countSessionBricks(bricks, session.id);
       confirmAction(
         'Remove focus session?',
-        `This removes ${session.bricksEarned} brick${session.bricksEarned === 1 ? '' : 's'} and may undo building progress.`,
+        `This removes ${placed.count} brick${placed.count === 1 ? '' : 's'} and may undo building progress.`,
         'Remove',
         async () => {
           setRemovingSessionId(session.id);
@@ -66,7 +67,7 @@ export default function CategoryDetailScreen() {
         true,
       );
     },
-    [load, refreshCategory, refreshOne],
+    [bricks, load, refreshCategory, refreshOne],
   );
 
   useEffect(() => {
@@ -83,6 +84,8 @@ export default function CategoryDetailScreen() {
 
   const stages = MACRO_BUILDING_STAGES;
   const stage = stages[category.currentStageIndex];
+  const focusBricks = bricks.filter((b) => b.sessionId);
+  const orphanBricks = bricks.filter((b) => !b.sessionId);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -112,10 +115,21 @@ export default function CategoryDetailScreen() {
       {category.type === 'standard' && sessions.length > 0 && (
         <Card style={styles.card}>
           <CardTitle>Focus sessions</CardTitle>
-          {sessions.map((session) => (
+          <Text style={styles.sessionMeta}>
+            {sessions.length} session{sessions.length === 1 ? '' : 's'} · {focusBricks.length}{' '}
+            brick{focusBricks.length === 1 ? '' : 's'} on wall
+            {orphanBricks.length > 0
+              ? ` · ${orphanBricks.length} other brick${orphanBricks.length === 1 ? '' : 's'}`
+              : ''}
+          </Text>
+          {sessions.map((session) => {
+            const placed = countSessionBricks(bricks, session.id);
+            return (
             <View key={session.id} style={styles.sessionRow}>
               <View style={styles.sessionInfo}>
-                <Text style={styles.sessionText}>{formatSessionSummary(session)}</Text>
+                <Text style={styles.sessionText}>
+                  {formatSessionSummary(session, placed)}
+                </Text>
               </View>
               <Pressable
                 onPress={() => handleRemoveSession(session)}
@@ -127,7 +141,8 @@ export default function CategoryDetailScreen() {
                 </Text>
               </Pressable>
             </View>
-          ))}
+            );
+          })}
         </Card>
       )}
 
@@ -160,6 +175,7 @@ const styles = StyleSheet.create({
   meta: { color: theme.colors.textMuted, marginBottom: theme.spacing.lg },
   card: { marginTop: theme.spacing.lg },
   cardText: { color: theme.colors.textMuted },
+  sessionMeta: { color: theme.colors.textMuted, fontSize: 13, marginBottom: theme.spacing.sm },
   buildingRow: { color: theme.colors.text, marginTop: 4, fontSize: 14 },
   sessionRow: {
     flexDirection: 'row',
