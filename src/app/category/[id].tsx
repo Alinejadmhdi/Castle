@@ -3,13 +3,14 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getCategoryById } from '@/services/database/repositories';
 import { getBricksByCategory, getSessionsByCategory } from '@/services/database/brickRepository';
-import { removeFocusSessionAndBricks } from '@/features/bricks/sessionRemovalService';
+import { removeFocusSessionAndBricks, removeBrickAndRollback } from '@/features/bricks/sessionRemovalService';
 import { repairFocusSessionBricks } from '@/features/bricks/sessionBrickRepair';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { confirmAction } from '@/utils/confirm';
 import { formatSessionSummary, countSessionBricks } from '@/utils/formatSession';
+import { formatResistBrickSummary } from '@/utils/formatResistBrick';
 import { getBuildingsByCategory } from '@/services/database/buildingRepository';
 import { getDailyBuild } from '@/services/database/buildingRepository';
 import { MACRO_BUILDING_STAGES } from '@/constants/buildings';
@@ -30,6 +31,7 @@ export default function CategoryDetailScreen() {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [selectedBrick, setSelectedBrick] = useState<Brick | null>(null);
   const [removingSessionId, setRemovingSessionId] = useState<string | null>(null);
+  const [removingBrickId, setRemovingBrickId] = useState<string | null>(null);
   const refreshOne = useCategoryStore((s) => s.refreshOne);
   const refreshCategory = useMapSceneStore((s) => s.refreshCategory);
 
@@ -78,6 +80,33 @@ export default function CategoryDetailScreen() {
     [bricks, load, refreshCategory, refreshOne],
   );
 
+  const handleRemoveBrick = useCallback(
+    (brick: Brick) => {
+      confirmAction(
+        'Remove resist brick?',
+        'This removes 1 brick and may undo building progress.',
+        'Remove',
+        async () => {
+          setRemovingBrickId(brick.id);
+          try {
+            const { categoryId, category: updated } = await removeBrickAndRollback(brick.id);
+            useCategoryStore.getState().syncCategory(updated);
+            if (selectedBrick?.id === brick.id) setSelectedBrick(null);
+            await refreshCategory(categoryId);
+            await load();
+            await refreshOne(categoryId);
+          } catch (error) {
+            console.error('removeBrickAndRollback failed:', error);
+          } finally {
+            setRemovingBrickId(null);
+          }
+        },
+        true,
+      );
+    },
+    [load, refreshCategory, refreshOne, selectedBrick?.id],
+  );
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -94,6 +123,7 @@ export default function CategoryDetailScreen() {
   const stage = stages[category.currentStageIndex];
   const focusBricks = bricks.filter((b) => b.sessionId);
   const orphanBricks = bricks.filter((b) => !b.sessionId);
+  const resistBricks = [...orphanBricks].sort((a, b) => b.globalIndex - a.globalIndex);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -154,6 +184,31 @@ export default function CategoryDetailScreen() {
         </Card>
       )}
 
+      {category.type === 'miniature' && resistBricks.length > 0 && (
+        <Card style={styles.card}>
+          <CardTitle>Resist log</CardTitle>
+          <Text style={styles.sessionMeta}>
+            {resistBricks.length} brick{resistBricks.length === 1 ? '' : 's'} on wall
+          </Text>
+          {resistBricks.map((brick) => (
+            <View key={brick.id} style={styles.sessionRow}>
+              <View style={styles.sessionInfo}>
+                <Text style={styles.sessionText}>{formatResistBrickSummary(brick)}</Text>
+              </View>
+              <Pressable
+                onPress={() => handleRemoveBrick(brick)}
+                disabled={removingBrickId === brick.id}
+                style={styles.removeBtn}
+              >
+                <Text style={styles.removeBtnText}>
+                  {removingBrickId === brick.id ? '…' : 'Remove'}
+                </Text>
+              </Pressable>
+            </View>
+          ))}
+        </Card>
+      )}
+
       {buildings.length > 0 && (
         <Card style={styles.card}>
           <CardTitle>{`Completed structures (${buildings.length})`}</CardTitle>
@@ -171,6 +226,12 @@ export default function CategoryDetailScreen() {
         brick={selectedBrick}
         visible={!!selectedBrick}
         onClose={() => setSelectedBrick(null)}
+        onRemove={
+          category.type === 'miniature' && selectedBrick
+            ? () => handleRemoveBrick(selectedBrick)
+            : undefined
+        }
+        removing={!!selectedBrick && removingBrickId === selectedBrick.id}
       />
     </ScrollView>
   );

@@ -2,14 +2,17 @@ import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
 import type { Brick } from '@/types';
 import { formatBrickValue } from '@/utils';
 import { theme } from '@/constants/theme';
+import { Button } from '@/components/ui/Button';
 
 interface BrickPopoverProps {
   brick: Brick | null;
   visible: boolean;
   onClose: () => void;
+  onRemove?: () => void;
+  removing?: boolean;
 }
 
-export function BrickPopover({ brick, visible, onClose }: BrickPopoverProps) {
+export function BrickPopover({ brick, visible, onClose, onRemove, removing }: BrickPopoverProps) {
   if (!brick) return null;
 
   const date = new Date(brick.completedAt).toLocaleString();
@@ -17,7 +20,7 @@ export function BrickPopover({ brick, visible, onClose }: BrickPopoverProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <View style={styles.card}>
+        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <View style={[styles.swatch, { backgroundColor: brick.color }]} />
           <Text style={styles.title}>Brick #{brick.globalIndex}</Text>
           <Text style={styles.row}>Value: {formatBrickValue(brick.fractionalValue)} hr</Text>
@@ -25,8 +28,17 @@ export function BrickPopover({ brick, visible, onClose }: BrickPopoverProps) {
           {brick.streakRewardLabel && (
             <Text style={styles.streak}>Streak reward: {brick.streakRewardLabel} days</Text>
           )}
-          {brick.isMiniature && <Text style={styles.row}>Miniature resist brick</Text>}
-        </View>
+          {brick.isMiniature && <Text style={styles.row}>Resist brick</Text>}
+          {onRemove && (
+            <Button
+              title={removing ? 'Removing…' : 'Remove brick'}
+              variant="danger"
+              onPress={onRemove}
+              disabled={removing}
+              style={styles.removeBtn}
+            />
+          )}
+        </Pressable>
       </Pressable>
     </Modal>
   );
@@ -64,4 +76,5 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     fontWeight: '600',
   },
+  removeBtn: { marginTop: theme.spacing.lg },
 });

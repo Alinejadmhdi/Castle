@@ -8,6 +8,7 @@ import { withCategoryLock } from '@/utils/categoryLock';
 import {
   deleteBrick,
   deleteSession,
+  getBrickById,
   getBricksBySessionId,
   getSessionById,
   sumBrickValueByCategory,
@@ -78,6 +79,61 @@ export async function adjustDailyBuildForRemovedBricks(
   }
 }
 
+async function removeBricksFromCategory(
+  category: Category,
+  bricks: Brick[],
+): Promise<Category> {
+  if (bricks.length === 0) return category;
+
+  const previousTotal = category.totalBrickValue;
+  const removedBrickIds = new Set(bricks.map((b) => b.id));
+
+  await adjustDailyBuildForRemovedBricks(bricks);
+  for (const brick of bricks) {
+    await deleteBrick(brick.id);
+  }
+
+  const newTotal = await sumBrickValueByCategory(category.id);
+  const newStage = getStageForBrickValue(newTotal, category.type);
+
+  await reconcileBuildingsAfterBrickRemoval(
+    category,
+    previousTotal,
+    newTotal,
+    removedBrickIds,
+  );
+
+  category.totalBrickValue = newTotal;
+  category.currentStageIndex = newStage.index;
+  await updateCategory(category);
+  await reconcileWallBrickAbsorption(category.id);
+
+  const refreshed = await getCategoryById(category.id);
+  if (!refreshed) throw new Error('Category not found after update');
+  return refreshed;
+}
+
+/** Remove a single resist/focus brick and roll back category progress. */
+export async function removeBrickAndRollback(
+  brickId: string,
+): Promise<{ categoryId: string; category: Category }> {
+  const preview = await getBrickById(brickId);
+  if (!preview) throw new Error('Brick not found');
+
+  return withCategoryLock(preview.categoryId, () =>
+    withDbWrite(async () => {
+      const brick = await getBrickById(brickId);
+      if (!brick) throw new Error('Brick not found');
+
+      const category = await getCategoryById(brick.categoryId);
+      if (!category) throw new Error('Category not found');
+
+      const updated = await removeBricksFromCategory(category, [brick]);
+      return { categoryId: updated.id, category: updated };
+    }),
+  );
+}
+
 export async function removeFocusSessionAndBricks(
   sessionId: string,
 ): Promise<{ categoryId: string; category: Category }> {
@@ -101,32 +157,10 @@ export async function removeFocusSessionAndBricks(
         return { categoryId: category.id, category };
       }
 
-      const previousTotal = category.totalBrickValue;
-      const removedBrickIds = new Set(bricks.map((b) => b.id));
-
-      await adjustDailyBuildForRemovedBricks(bricks);
-      for (const brick of bricks) {
-        await deleteBrick(brick.id);
-      }
-
-      const newTotal = await sumBrickValueByCategory(category.id);
-      const newStage = getStageForBrickValue(newTotal, category.type);
-
-      await reconcileBuildingsAfterBrickRemoval(
-        category,
-        previousTotal,
-        newTotal,
-        removedBrickIds,
-      );
-
-      category.totalBrickValue = newTotal;
-      category.currentStageIndex = newStage.index;
-      await updateCategory(category);
-
+      const updated = await removeBricksFromCategory(category, bricks);
       await deleteSession(sessionId);
-      await reconcileWallBrickAbsorption(category.id);
 
-      const refreshed = await getCategoryById(category.id);
+      const refreshed = await getCategoryById(updated.id);
       if (!refreshed) throw new Error('Category not found after update');
       return { categoryId: refreshed.id, category: refreshed };
     }),
