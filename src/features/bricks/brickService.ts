@@ -19,6 +19,7 @@ import {
   getBrickCount,
   getBrickCountForStage,
   getBricksByCategory,
+  getBricksBySessionId,
   assignBricksToBuilding,
 } from '@/services/database/brickRepository';
 import { withDbWrite } from '@/services/database/dbQueue';
@@ -568,17 +569,33 @@ export async function completeSessionBricks(
   elapsedMs: number,
   fractionalEnabled: boolean,
 ): Promise<BrickCreationResult | null> {
-  const totalBrickValue = msToBrickValue(elapsedMs, fractionalEnabled);
+  const cappedMs = session.timerMode === 'stopwatch' || session.plannedDurationMs <= 0
+    ? elapsedMs
+    : Math.min(elapsedMs, session.plannedDurationMs);
+  const totalBrickValue = msToBrickValue(cappedMs, fractionalEnabled);
   if (totalBrickValue <= 0) return null;
+
+  const existing = await getBricksBySessionId(session.id);
+  const existingTotal = existing.reduce((sum, b) => sum + b.fractionalValue, 0);
+  if (existingTotal >= totalBrickValue - 0.001) {
+    const category = await getCategoryById(session.categoryId);
+    return category
+      ? { bricks: existing, unlocks: [], category }
+      : null;
+  }
 
   const chunks = splitBrickValue(totalBrickValue, fractionalEnabled);
   if (chunks.length === 0) return null;
 
   let latest: BrickCreationResult | null = null;
-  const allBricks: Brick[] = [];
+  const allBricks: Brick[] = [...existing];
   const allUnlocks: UnlockEvent[] = [];
 
-  for (const chunk of chunks) {
+  const alreadyAwarded = existingTotal;
+  let remainingToAward = Math.max(0, totalBrickValue - alreadyAwarded);
+  const pendingChunks = splitBrickValue(remainingToAward, fractionalEnabled);
+
+  for (const chunk of pendingChunks) {
     latest = await addBrickToCategory(
       session.categoryId,
       session.brickColor,

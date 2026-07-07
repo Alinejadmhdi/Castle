@@ -95,6 +95,11 @@ export async function deleteBrick(id: string): Promise<void> {
   await db.runAsync('DELETE FROM bricks WHERE id = ?', [id]);
 }
 
+export async function updateBrickFractionalValue(id: string, value: number): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE bricks SET fractional_value = ? WHERE id = ?', [value, id]);
+}
+
 export async function getBrickCount(categoryId: string): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ c: number }>(

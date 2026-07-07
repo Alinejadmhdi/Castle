@@ -1,8 +1,10 @@
 import type { Brick, FocusSession } from '@/types';
 import { formatBrickValue } from '@/utils';
+import { sessionBrickTotals } from '@/features/bricks/sessionBrickRepairLogic';
+import { sessionElapsedMs } from '@/utils/sessionTiming';
 
 export function formatSessionDuration(session: FocusSession): string {
-  const ms = session.elapsedMs;
+  const ms = sessionElapsedMs(session);
   const totalMin = Math.round(ms / 60_000);
   if (totalMin < 60) return `${totalMin} min`;
   const h = Math.floor(totalMin / 60);
@@ -28,10 +30,7 @@ export function formatSessionSummary(
 ): string {
   const date = new Date(session.endedAt ?? session.startedAt).toLocaleDateString();
   const duration = formatSessionDuration(session);
-  const bricks = placed ?? {
-    count: Math.max(1, Math.round(session.bricksEarned)),
-    value: session.bricksEarned,
-  };
+  const bricks = placed ?? sessionBrickTotals(session, true);
   const brickWord = bricks.count === 1 ? 'brick' : 'bricks';
   return `${date} · ${duration} · ${bricks.count} ${brickWord} (${formatBrickValue(bricks.value)} hr)`;
 }

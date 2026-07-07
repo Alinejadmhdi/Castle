@@ -22,7 +22,7 @@ import {
 import { getCategoryById, updateCategory } from '@/services/database/repositories';
 import { CENTER_WALL_ABSORBER_KEY } from '@/constants/monumentPersistence';
 
-async function reconcileBuildingsAfterBrickRemoval(
+export async function reconcileBuildingsAfterBrickRemoval(
   category: Category,
   previousTotal: number,
   newTotal: number,
@@ -57,7 +57,7 @@ async function reconcileBuildingsAfterBrickRemoval(
   }
 }
 
-async function adjustDailyBuildForRemovedBricks(
+export async function adjustDailyBuildForRemovedBricks(
   bricks: Brick[],
 ): Promise<void> {
   const byDaily = new Map<string, { removed: number; brickIds: Set<string> }>();

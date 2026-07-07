@@ -4,8 +4,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getCategoryById } from '@/services/database/repositories';
 import { getBricksByCategory, getSessionsByCategory } from '@/services/database/brickRepository';
 import { removeFocusSessionAndBricks } from '@/features/bricks/sessionRemovalService';
+import { repairFocusSessionBricks } from '@/features/bricks/sessionBrickRepair';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { confirmAction } from '@/utils/confirm';
 import { formatSessionSummary, countSessionBricks } from '@/utils/formatSession';
 import { getBuildingsByCategory } from '@/services/database/buildingRepository';
@@ -33,6 +35,12 @@ export default function CategoryDetailScreen() {
 
   const load = useCallback(async () => {
     if (!id) return;
+    const fractionalEnabled = useSettingsStore.getState().settings.fractionalBricksEnabled;
+    const repaired = await repairFocusSessionBricks(id, fractionalEnabled);
+    if (repaired) {
+      await refreshOne(id);
+      await refreshCategory(id);
+    }
     const cat = await getCategoryById(id);
     setCategory(cat);
     setBricks(await getBricksByCategory(id));
@@ -41,7 +49,7 @@ export default function CategoryDetailScreen() {
       (await getSessionsByCategory(id)).filter((s) => s.status === 'completed'),
     );
     setDaily(await getDailyBuild(id, todayLocalDate()));
-  }, [id]);
+  }, [id, refreshOne, refreshCategory]);
 
   const handleRemoveSession = useCallback(
     (session: FocusSession) => {

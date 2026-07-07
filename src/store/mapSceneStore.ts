@@ -6,6 +6,9 @@ import { getBuildingsByCategory } from '@/services/database/buildingRepository';
 import { getCategoryById } from '@/services/database/repositories';
 import { relayoutCategoryMonuments } from '@/features/progression/monumentLayoutService';
 import { reconcileWallBrickAbsorption } from '@/features/bricks/brickService';
+import { repairFocusSessionBricks } from '@/features/bricks/sessionBrickRepair';
+import { useSettingsStore } from '@/store/settingsStore';
+import { useCategoryStore } from '@/store/categoryStore';
 import { withDbWrite } from '@/services/database/dbQueue';
 
 interface MapSceneState {
@@ -84,7 +87,15 @@ export const useMapSceneStore = create<MapSceneState>((set, get) => ({
         if (!category) return;
 
         if (category.totalBrickValue > 0) {
-          await withDbWrite(() => reconcileWallBrickAbsorption(categoryId));
+          await withDbWrite(async () => {
+            const fractionalEnabled =
+              useSettingsStore.getState().settings.fractionalBricksEnabled;
+            const repaired = await repairFocusSessionBricks(categoryId, fractionalEnabled);
+            await reconcileWallBrickAbsorption(categoryId);
+            if (repaired) {
+              await useCategoryStore.getState().refreshOne(categoryId);
+            }
+          });
         }
         const bricks = await getBricksByCategory(categoryId);
         const buildings = await relayoutCategoryMonuments(categoryId, category.type);

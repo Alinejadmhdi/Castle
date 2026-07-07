@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Brick, FocusSession, SessionTimerMode, UnlockEvent } from '@/types';
 import { generateId, msToBrickValue } from '@/utils';
+import { sessionElapsedMs } from '@/utils/sessionTiming';
 import {
   getActiveSession,
   insertSession,
@@ -57,7 +58,10 @@ function clearTickInterval(interval: ReturnType<typeof setInterval> | null) {
 let completingSession = false;
 
 function cappedElapsedMs(session: FocusSession, activeSinceMs: number | null): number {
-  const elapsedMs = segmentElapsedMs(session, activeSinceMs);
+  if (session.status !== 'active' || activeSinceMs == null) {
+    return sessionElapsedMs(session);
+  }
+  const elapsedMs = session.elapsedMs + (Date.now() - activeSinceMs);
   if (session.timerMode === 'stopwatch' || session.plannedDurationMs <= 0) {
     return elapsedMs;
   }
@@ -204,10 +208,12 @@ export const useTimerStore = create<TimerState>((set, get) => {
       const cappedElapsed = Math.min(session.plannedDurationMs, totalElapsed);
 
       if (cappedElapsed >= session.plannedDurationMs) {
+        clearTickInterval(get().tickInterval);
         set({
-          session: { ...session, elapsedMs: cappedElapsed },
+          session: { ...session, elapsedMs: cappedElapsed, status: 'completed' },
           remainingMs: 0,
           activeSinceMs: null,
+          tickInterval: null,
         });
         await get().complete();
         return;
@@ -232,20 +238,27 @@ export const useTimerStore = create<TimerState>((set, get) => {
       completingSession = true;
       clearTickInterval(tickInterval);
 
-      try {
-        const elapsedMs = cappedElapsedMs(session, activeSinceMs);
-        const settings = useSettingsStore.getState().settings;
-        const brickValue = msToBrickValue(elapsedMs, settings.fractionalBricksEnabled);
+      const elapsedMs = cappedElapsedMs(session, activeSinceMs);
+      const settings = useSettingsStore.getState().settings;
+      const brickValue = msToBrickValue(elapsedMs, settings.fractionalBricksEnabled);
 
-        const updated: FocusSession = {
-          ...session,
-          elapsedMs,
-          endedAt: new Date().toISOString(),
-          status: 'completed',
-          bricksEarned: brickValue,
-        };
+      const updated: FocusSession = {
+        ...session,
+        elapsedMs,
+        endedAt: new Date().toISOString(),
+        status: 'completed',
+        bricksEarned: brickValue,
+      };
+
+      set({
+        session: updated,
+        activeSinceMs: null,
+        tickInterval: null,
+        remainingMs: 0,
+      });
+
+      try {
         await updateSession(updated);
-        set({ session: updated, activeSinceMs: null, tickInterval: null, remainingMs: 0 });
 
         const result = await completeSessionBricks(
           updated,
@@ -275,6 +288,9 @@ export const useTimerStore = create<TimerState>((set, get) => {
           activeSinceMs: null,
           lastResult: null,
         });
+        return false;
+      } catch (error) {
+        console.error('complete session failed:', error);
         return false;
       } finally {
         completingSession = false;
