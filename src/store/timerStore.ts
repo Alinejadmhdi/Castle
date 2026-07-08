@@ -212,7 +212,7 @@ export const useTimerStore = create<TimerState>((set, get) => {
       if (cappedElapsed >= session.plannedDurationMs) {
         clearTickInterval(get().tickInterval);
         set({
-          session: { ...session, elapsedMs: cappedElapsed, status: 'completed' },
+          session: { ...session, elapsedMs: cappedElapsed },
           remainingMs: 0,
           activeSinceMs: null,
           tickInterval: null,
