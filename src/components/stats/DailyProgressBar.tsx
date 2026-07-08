@@ -53,7 +53,7 @@ export function DailyProgressBar({ categories, hoursByCategoryId }: DailyProgres
     if (status !== 'all_met') return;
     if (celebratedRef.current === today) return;
     celebratedRef.current = today;
-    triggerConfetti();
+    triggerConfetti('celebration');
   }, [status, today, triggerConfetti]);
 
   const barColor = DAILY_BAR_COLORS[status === 'empty' ? 'empty' : status];

@@ -1,67 +1,129 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
+  Easing,
   runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
 } from 'react-native-reanimated';
-import { theme } from '@/constants/theme';
+import {
+  buildConfettiParticles,
+  type ConfettiVariant,
+  type ParticleSpec,
+} from '@/components/celebration/confettiParticles';
 
-const { width, height } = Dimensions.get('window');
-const PARTICLE_COUNT = 48;
-const CENTER_X = width / 2;
-const CENTER_Y = height * 0.5;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-function Particle({ index, onDone }: { index: number; onDone?: () => void }) {
-  const angle = (index / PARTICLE_COUNT) * Math.PI * 2;
-  const distance = 80 + (index % 5) * 40;
-  const targetX = Math.cos(angle) * distance;
-  const targetY = Math.sin(angle) * distance + 60;
-
+function Particle({
+  spec,
+  onDone,
+}: {
+  spec: ParticleSpec;
+  onDone?: () => void;
+}) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
-  const opacity = useSharedValue(1);
-  const color = theme.colors.confetti[index % theme.colors.confetti.length];
+  const rotate = useSharedValue(0);
+  const opacity = useSharedValue(0);
 
   useEffect(() => {
+    const totalMs = spec.burstMs + spec.fallMs;
+    opacity.value = withDelay(
+      spec.delayMs,
+      withSequence(
+        withTiming(1, { duration: 80 }),
+        withDelay(totalMs * 0.55, withTiming(0, { duration: totalMs * 0.4 })),
+      ),
+    );
     translateX.value = withDelay(
-      index * 25,
-      withTiming(targetX, { duration: 1800 }, (finished) => {
-        if (finished && index === PARTICLE_COUNT - 1 && onDone) {
+      spec.delayMs,
+      withTiming(spec.driftX, {
+        duration: totalMs,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
+    translateY.value = withDelay(
+      spec.delayMs,
+      withSequence(
+        withTiming(spec.liftY, {
+          duration: spec.burstMs,
+          easing: Easing.out(Easing.quad),
+        }),
+        withTiming(spec.fallY, {
+          duration: spec.fallMs,
+          easing: Easing.in(Easing.quad),
+        }),
+      ),
+    );
+    rotate.value = withDelay(
+      spec.delayMs,
+      withTiming(spec.rotationDeg, {
+        duration: totalMs,
+        easing: Easing.linear,
+      }, (finished) => {
+        if (finished && onDone) {
           runOnJS(onDone)();
         }
       }),
     );
-    translateY.value = withDelay(index * 25, withTiming(targetY, { duration: 1800 }));
-    opacity.value = withDelay(index * 25 + 1200, withTiming(0, { duration: 600 }));
-  }, [index, onDone, opacity, targetX, targetY, translateX, translateY]);
+  }, [onDone, opacity, rotate, spec, translateX, translateY]);
 
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
     opacity: opacity.value,
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { rotate: `${rotate.value}deg` },
+    ],
   }));
 
   return (
     <Animated.View
-      style={[styles.particle, style, { left: CENTER_X - 4, top: CENTER_Y - 4, backgroundColor: color }]}
+      style={[
+        styles.particle,
+        style,
+        {
+          left: spec.originX - spec.width / 2,
+          top: spec.originY - spec.height / 2,
+          width: spec.width,
+          height: spec.height,
+          backgroundColor: spec.color,
+          borderRadius: spec.width <= 4 ? spec.width / 2 : 1,
+        },
+      ]}
     />
   );
 }
 
 interface ConfettiOverlayProps {
   visible?: boolean;
+  variant?: ConfettiVariant;
   onComplete?: () => void;
 }
 
-export function ConfettiOverlay({ visible = true, onComplete }: ConfettiOverlayProps) {
+export function ConfettiOverlay({
+  visible = true,
+  variant = 'celebration',
+  onComplete,
+}: ConfettiOverlayProps) {
+  const particles = useMemo(
+    () => buildConfettiParticles(variant, SCREEN_WIDTH, SCREEN_HEIGHT),
+    [variant],
+  );
+
   if (!visible) return null;
 
   return (
     <View style={styles.overlay} pointerEvents="none">
-      {Array.from({ length: PARTICLE_COUNT }).map((_, i) => (
-        <Particle key={i} index={i} onDone={i === PARTICLE_COUNT - 1 ? onComplete : undefined} />
+      {particles.map((spec, index) => (
+        <Particle
+          key={`${variant}-${index}`}
+          spec={spec}
+          onDone={index === particles.length - 1 ? onComplete : undefined}
+        />
       ))}
     </View>
   );
@@ -74,8 +136,5 @@ const styles = StyleSheet.create({
   },
   particle: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 2,
   },
 });

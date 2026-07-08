@@ -27,7 +27,7 @@ export function UnlockCelebration({ unlocks, visible, onDismiss }: UnlockCelebra
     <View style={styles.overlay} pointerEvents="box-none">
       <Pressable style={styles.backdrop} onPress={onDismiss}>
         <View style={styles.confettiWrap} pointerEvents="none">
-          <ConfettiOverlay visible />
+          <ConfettiOverlay visible variant="celebration" />
         </View>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.emoji}>🏰</Text>

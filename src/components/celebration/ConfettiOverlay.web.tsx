@@ -1,43 +1,58 @@
-import { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Dimensions } from 'react-native';
-import { theme } from '@/constants/theme';
+import { useEffect, useMemo, useRef } from 'react';
+import { View, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
+import {
+  buildConfettiParticles,
+  type ConfettiVariant,
+  type ParticleSpec,
+} from '@/components/celebration/confettiParticles';
 
-const { width, height } = Dimensions.get('window');
-const PARTICLE_COUNT = 36;
-const CENTER_X = width / 2;
-const CENTER_Y = height * 0.45;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-function Particle({ index }: { index: number }) {
-  const anim = useRef(new Animated.Value(0)).current;
-  const angle = (index / PARTICLE_COUNT) * Math.PI * 2;
-  const distance = 80 + (index % 5) * 40;
-  const targetX = Math.cos(angle) * distance;
-  const targetY = Math.sin(angle) * distance + 60;
-  const color = theme.colors.confetti[index % theme.colors.confetti.length];
+function Particle({ spec }: { spec: ParticleSpec }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const totalMs = spec.burstMs + spec.fallMs;
 
   useEffect(() => {
-    Animated.timing(anim, {
+    Animated.timing(progress, {
       toValue: 1,
-      duration: 1800,
-      delay: index * 25,
+      duration: totalMs,
+      delay: spec.delayMs,
+      easing: Easing.linear,
       useNativeDriver: true,
     }).start();
-  }, [anim, index]);
+  }, [progress, spec.delayMs, totalMs]);
 
-  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [0, targetX] });
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, targetY] });
-  const opacity = anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] });
+  const burstT = spec.burstMs / totalMs;
+  const translateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, spec.driftX],
+  });
+  const translateY = progress.interpolate({
+    inputRange: [0, burstT, 1],
+    outputRange: [0, spec.liftY, spec.fallY],
+  });
+  const rotate = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', `${spec.rotationDeg}deg`],
+  });
+  const opacity = progress.interpolate({
+    inputRange: [0, 0.08, 0.65, 1],
+    outputRange: [0, 1, 1, 0],
+  });
 
   return (
     <Animated.View
       style={[
         styles.particle,
         {
-          left: CENTER_X - 4,
-          top: CENTER_Y - 4,
-          backgroundColor: color,
-          transform: [{ translateX }, { translateY }],
+          left: spec.originX - spec.width / 2,
+          top: spec.originY - spec.height / 2,
+          width: spec.width,
+          height: spec.height,
+          backgroundColor: spec.color,
+          borderRadius: spec.width <= 4 ? spec.width / 2 : 1,
           opacity,
+          transform: [{ translateX }, { translateY }, { rotate }],
         },
       ]}
     />
@@ -46,16 +61,23 @@ function Particle({ index }: { index: number }) {
 
 interface ConfettiOverlayProps {
   visible: boolean;
+  variant?: ConfettiVariant;
   onComplete?: () => void;
 }
 
 /** Web fallback without Reanimated worklets */
-export function ConfettiOverlay({ visible }: ConfettiOverlayProps) {
+export function ConfettiOverlay({ visible, variant = 'celebration' }: ConfettiOverlayProps) {
+  const particles = useMemo(
+    () => buildConfettiParticles(variant, SCREEN_WIDTH, SCREEN_HEIGHT),
+    [variant],
+  );
+
   if (!visible) return null;
+
   return (
     <View style={styles.overlay} pointerEvents="none">
-      {Array.from({ length: PARTICLE_COUNT }).map((_, i) => (
-        <Particle key={i} index={i} />
+      {particles.map((spec, index) => (
+        <Particle key={`${variant}-${index}`} spec={spec} />
       ))}
     </View>
   );
@@ -68,8 +90,5 @@ const styles = StyleSheet.create({
   },
   particle: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 2,
   },
 });
