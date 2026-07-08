@@ -42,7 +42,17 @@ export function TodayBricksAccordion({
     : entries;
 
   const headerEntry = activeEntry ?? ordered[0];
-  const showChevron = entries.length > 1 || (entries.length === 1 && !expanded);
+  const canExpand = entries.length > 1;
+
+  if (!canExpand) {
+    return (
+      <View style={styles.wrap}>
+        <View style={styles.header}>
+          <Text style={styles.headerLine}>{brickLine(headerEntry.category.name, headerEntry.added)}</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>
@@ -54,20 +64,16 @@ export function TodayBricksAccordion({
       >
         <View style={styles.headerText}>
           <Text style={styles.headerLine}>{brickLine(headerEntry.category.name, headerEntry.added)}</Text>
-          {!expanded && entries.length > 1 && (
-            <Text style={styles.hint}>Tap to see all {entries.length} categories</Text>
-          )}
+          {!expanded && <Text style={styles.hint}>Tap to see all {entries.length} categories</Text>}
         </View>
-        {showChevron && (
-          <Ionicons
-            name={expanded ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={theme.colors.primary}
-          />
-        )}
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color={theme.colors.primary}
+        />
       </Pressable>
 
-      {expanded && entries.length > 1 && (
+      {expanded && (
         <View style={styles.list}>
           {ordered.map((entry) => (
             <Text key={entry.category.id} style={styles.listLine}>
