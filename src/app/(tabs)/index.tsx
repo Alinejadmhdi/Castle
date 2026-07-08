@@ -20,6 +20,7 @@ import {
   ensureAllTodayDailySnapshots,
 } from '@/features/daily/dailySnapshotService';
 import { getDailyBuildsForDate } from '@/services/database/buildingRepository';
+import { getCategoryBrickHoursByDay } from '@/features/stats/categoryCalendarData';
 import { formatBrickValue, todayLocalDate } from '@/utils';
 import type { DailyBuild } from '@/types';
 
@@ -38,6 +39,7 @@ export default function LifeMapScreen() {
   const lastActivated3dId = usePlotRenderStore((s) => s.lastActivated3dId);
   const [panel, setPanel] = useState<{ categoryId: string; mode: MapPanelMode } | null>(null);
   const [todayDaily, setTodayDaily] = useState<Record<string, DailyBuild>>({});
+  const [todayBrickHoursByCategory, setTodayBrickHoursByCategory] = useState<Record<string, number>>({});
 
   const categoryIdsKey = useMemo(
     () => categories.map((c) => c.id).join(','),
@@ -58,16 +60,25 @@ export default function LifeMapScreen() {
   const refreshTodayCounts = useCallback(async (categoryIds: string[]) => {
     if (categoryIds.length === 0) {
       setTodayDaily({});
+      setTodayBrickHoursByCategory({});
       return;
     }
     await ensureAllTodayDailySnapshots(categoryIds);
-    const dailies = await getDailyBuildsForDate(todayLocalDate());
+    const todayKey = todayLocalDate();
+    const dailies = await getDailyBuildsForDate(todayKey);
     const map: Record<string, DailyBuild> = {};
     for (const d of dailies) {
       map[d.categoryId] = d;
     }
     setTodayDaily(map);
-  }, []);
+    const hoursEntries = await Promise.all(
+      categories.map(async (cat) => {
+        const byDay = await getCategoryBrickHoursByDay(cat.id, todayKey, todayKey, cat.type);
+        return [cat.id, byDay[todayKey] ?? 0] as const;
+      }),
+    );
+    setTodayBrickHoursByCategory(Object.fromEntries(hoursEntries));
+  }, [categories]);
 
   useFocusEffect(
     useCallback(() => {
@@ -209,6 +220,7 @@ export default function LifeMapScreen() {
             const sceneLoading = loadingIds[cat.id] === true;
             const checkpoint = getCheckpointProgress(cat.totalBrickValue, cat.type);
             const addedToday = bricksAddedToday(todayDaily[cat.id] ?? null, cat.totalBrickValue);
+            const todayBrickHours = todayBrickHoursByCategory[cat.id] ?? addedToday;
             const showFullPlot = isFocused && lifeMap3dCategoryId === cat.id;
             const showPreview = isFocused && !showFullPlot;
             return (
@@ -217,7 +229,7 @@ export default function LifeMapScreen() {
                   <View style={styles.plotHeaderText}>
                     <Text style={styles.plotName}>{cat.name}</Text>
                     <Text style={styles.plotToday}>
-                      +{formatBrickValue(addedToday)} brick{addedToday === 1 ? '' : 's'} today
+                      +{formatBrickValue(todayBrickHours)} brick{todayBrickHours === 1 ? '' : 's'} today
                     </Text>
                     <Text style={styles.plotMeta}>
                       {checkpoint.label} toward {checkpoint.nextStageName}
@@ -244,6 +256,8 @@ export default function LifeMapScreen() {
                       totalBrickValue={cat.totalBrickValue}
                       categoryType={cat.type}
                       wallColor={cat.defaultColor}
+                      dailyGoalHours={cat.dailyGoalHours}
+                      todayBrickHours={todayBrickHours}
                     />
                   )
                 ) : showPreview ? (
@@ -257,6 +271,8 @@ export default function LifeMapScreen() {
                       buildings={scene?.buildings ?? []}
                       totalBrickValue={cat.totalBrickValue}
                       categoryType={cat.type}
+                      dailyGoalHours={cat.dailyGoalHours}
+                      todayBrickHours={todayBrickHours}
                     />
                   )
                 ) : (

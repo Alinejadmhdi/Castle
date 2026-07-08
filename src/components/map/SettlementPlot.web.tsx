@@ -15,6 +15,7 @@ import { theme } from '@/constants/theme';
 import { SettlementScene3D } from './three/SettlementScene3D';
 import { MapBackgroundImage } from './MapBackgroundImage';
 import { SettlementPlotOverlay } from './SettlementPlotOverlay';
+import { DailyCornerBuildingsOverlay } from './DailyCornerBuildingsOverlay';
 
 interface SettlementPlotProps {
   bricks: Brick[];
@@ -25,6 +26,8 @@ interface SettlementPlotProps {
   wallColor?: string;
   highlightBrickId?: string | null;
   onBrickPress?: (brick: Brick) => void;
+  dailyGoalHours?: number;
+  todayBrickHours?: number;
 }
 
 function clearCanvasAlpha(gl: WebGLRenderer) {
@@ -40,6 +43,8 @@ export function SettlementPlot({
   wallColor,
   highlightBrickId,
   onBrickPress,
+  dailyGoalHours = 0,
+  todayBrickHours = 0,
 }: SettlementPlotProps) {
   const canvasHeight = MAP_CANVAS_HEIGHT;
 
@@ -88,6 +93,10 @@ export function SettlementPlot({
           />
         </Canvas>
       </Suspense>
+      <DailyCornerBuildingsOverlay
+        dailyGoalHours={dailyGoalHours}
+        todayBrickHours={todayBrickHours}
+      />
       <SettlementPlotOverlay
         totalBrickValue={totalBrickValue}
         categoryType={categoryType}

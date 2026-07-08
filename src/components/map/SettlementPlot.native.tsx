@@ -7,6 +7,7 @@ import { theme } from '@/constants/theme';
 import { SettlementScene3D } from './three/SettlementScene3D';
 import { MapBackgroundImage } from './MapBackgroundImage';
 import { SettlementPlotOverlay } from './SettlementPlotOverlay';
+import { DailyCornerBuildingsOverlay } from './DailyCornerBuildingsOverlay';
 
 interface SettlementPlotProps {
   bricks: Brick[];
@@ -17,6 +18,8 @@ interface SettlementPlotProps {
   wallColor?: string;
   highlightBrickId?: string | null;
   onBrickPress?: (brick: Brick) => void;
+  dailyGoalHours?: number;
+  todayBrickHours?: number;
 }
 
 /** Native Life Map — expo-gl + R3F (same scene graph as Expo Go / web). */
@@ -28,6 +31,8 @@ export const SettlementPlot = memo(function SettlementPlot({
   categoryType = 'standard',
   highlightBrickId,
   onBrickPress,
+  dailyGoalHours = 0,
+  todayBrickHours = 0,
 }: SettlementPlotProps) {
   return (
     <View style={styles.wrap}>
@@ -60,6 +65,10 @@ export const SettlementPlot = memo(function SettlementPlot({
           />
         </Canvas>
       </Suspense>
+      <DailyCornerBuildingsOverlay
+        dailyGoalHours={dailyGoalHours}
+        todayBrickHours={todayBrickHours}
+      />
       <SettlementPlotOverlay
         totalBrickValue={totalBrickValue}
         categoryType={categoryType}

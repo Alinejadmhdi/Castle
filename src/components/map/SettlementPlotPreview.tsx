@@ -4,6 +4,7 @@ import { MapBackgroundImage } from './MapBackgroundImage';
 import { SettlementPlotOverlay } from './SettlementPlotOverlay';
 import { BrickWallOverlay } from './BrickWallOverlay';
 import { BuildingSpritesOverlay } from './BuildingSpritesOverlay';
+import { DailyCornerBuildingsOverlay } from './DailyCornerBuildingsOverlay';
 
 interface SettlementPlotPreviewProps {
   bricks: Brick[];
@@ -11,6 +12,8 @@ interface SettlementPlotPreviewProps {
   totalBrickValue?: number;
   categoryType?: CategoryType;
   plotScale?: number;
+  dailyGoalHours?: number;
+  todayBrickHours?: number;
 }
 
 /** Life Map card — 2D bricks + buildings, no GL (one Canvas only while focus panel is open). */
@@ -20,6 +23,8 @@ export function SettlementPlotPreview({
   totalBrickValue = 0,
   categoryType = 'standard',
   plotScale = 1,
+  dailyGoalHours = 0,
+  todayBrickHours = 0,
 }: SettlementPlotPreviewProps) {
   return (
     <View style={styles.wrap}>
@@ -35,6 +40,10 @@ export function SettlementPlotPreview({
         totalBrickValue={totalBrickValue}
         categoryType={categoryType}
         plotScale={plotScale}
+      />
+      <DailyCornerBuildingsOverlay
+        dailyGoalHours={dailyGoalHours}
+        todayBrickHours={todayBrickHours}
       />
       <SettlementPlotOverlay totalBrickValue={totalBrickValue} categoryType={categoryType} />
     </View>
