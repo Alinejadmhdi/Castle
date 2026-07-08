@@ -14,6 +14,9 @@ import {
   type ConfettiVariant,
   type ParticleSpec,
 } from '@/components/celebration/confettiParticles';
+import {
+  particleVisualStyle,
+} from '@/components/celebration/confettiParticleStyle';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -76,7 +79,7 @@ function Particle({
     transform: [
       { translateX: translateX.value },
       { translateY: translateY.value },
-      { rotate: `${rotate.value}deg` },
+      { rotate: `${rotate.value + spec.shapeRotation}deg` },
     ],
   }));
 
@@ -85,13 +88,12 @@ function Particle({
       style={[
         styles.particle,
         style,
+        particleVisualStyle(spec),
         {
           left: spec.originX - spec.width / 2,
           top: spec.originY - spec.height / 2,
           width: spec.width,
           height: spec.height,
-          backgroundColor: spec.color,
-          borderRadius: spec.width <= 4 ? spec.width / 2 : 1,
         },
       ]}
     />

@@ -5,6 +5,10 @@ import {
   type ConfettiVariant,
   type ParticleSpec,
 } from '@/components/celebration/confettiParticles';
+import {
+  particleRotationDeg,
+  particleVisualStyle,
+} from '@/components/celebration/confettiParticleStyle';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -33,7 +37,10 @@ function Particle({ spec }: { spec: ParticleSpec }) {
   });
   const rotate = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', `${spec.rotationDeg}deg`],
+    outputRange: [
+      particleRotationDeg(0, spec),
+      particleRotationDeg(spec.rotationDeg, spec),
+    ],
   });
   const opacity = progress.interpolate({
     inputRange: [0, 0.08, 0.65, 1],
@@ -44,13 +51,12 @@ function Particle({ spec }: { spec: ParticleSpec }) {
     <Animated.View
       style={[
         styles.particle,
+        particleVisualStyle(spec),
         {
           left: spec.originX - spec.width / 2,
           top: spec.originY - spec.height / 2,
           width: spec.width,
           height: spec.height,
-          backgroundColor: spec.color,
-          borderRadius: spec.width <= 4 ? spec.width / 2 : 1,
           opacity,
           transform: [{ translateX }, { translateY }, { rotate }],
         },
