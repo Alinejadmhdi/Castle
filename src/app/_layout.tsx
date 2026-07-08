@@ -11,6 +11,7 @@ import { useTimerStore } from '@/store/timerStore';
 import { stopAmbient } from '@/services/audio/audioService';
 import { useDailySeal } from '@/hooks/useDailySeal';
 import { theme } from '@/constants/theme';
+import { BrickConfettiLayer } from '@/components/celebration/BrickConfettiLayer';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -72,6 +73,7 @@ export default function RootLayout() {
             <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         )}
+        <BrickConfettiLayer />
       </View>
     </GestureHandlerRootView>
   );

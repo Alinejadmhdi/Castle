@@ -11,6 +11,7 @@ import { completeSessionBricks } from '@/features/bricks/brickService';
 import { useSettingsStore } from './settingsStore';
 import { useCategoryStore } from './categoryStore';
 import { useCelebrationStore } from './celebrationStore';
+import { useBrickConfettiStore } from './brickConfettiStore';
 import { usePlotRenderStore } from './plotRenderStore';
 
 interface TimerState {
@@ -270,6 +271,9 @@ export const useTimerStore = create<TimerState>((set, get) => {
 
         if (result) {
           await useCategoryStore.getState().refreshOne(session.categoryId);
+          if (result.bricks.length > 0) {
+            useBrickConfettiStore.getState().triggerBrickConfetti();
+          }
           if (result.unlocks.length > 0) {
             useCelebrationStore.getState().trigger(result.unlocks);
           }

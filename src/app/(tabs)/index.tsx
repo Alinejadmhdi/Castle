@@ -10,6 +10,7 @@ import { SettlementPlot } from '@/components/map/SettlementPlot';
 import { SettlementPlotPreview } from '@/components/map/SettlementPlotPreview';
 import { MapPlotPlaceholder } from '@/components/map/MapPlotPlaceholder';
 import { MapActionPanel, type MapPanelMode, type SceneBrickUpdate } from '@/components/map/MapActionPanel';
+import { TodayBricksAccordion } from '@/components/map/TodayBricksAccordion';
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { getCheckpointProgress } from '@/features/progression/checkpointProgress';
@@ -132,6 +133,9 @@ export default function LifeMapScreen() {
     lastActivated3dId,
   );
 
+  const activeCategoryId =
+    session?.categoryId ?? panel?.categoryId ?? lifeMap3dCategoryId ?? null;
+
   function openFocus(categoryId: string) {
     activate3d(categoryId);
     const timer = useTimerStore.getState();
@@ -194,7 +198,13 @@ export default function LifeMapScreen() {
             <Button title="Create Category" onPress={() => router.push('/category/new')} />
           </View>
         ) : (
-          categories.map((cat) => {
+          <>
+            <TodayBricksAccordion
+              categories={categories}
+              todayDaily={todayDaily}
+              activeCategoryId={activeCategoryId}
+            />
+            {categories.map((cat) => {
             const scene = scenes[cat.id];
             const sceneLoading = loadingIds[cat.id] === true;
             const checkpoint = getCheckpointProgress(cat.totalBrickValue, cat.type);
@@ -275,7 +285,8 @@ export default function LifeMapScreen() {
                 </View>
               </View>
             );
-          })
+          })}
+          </>
         )}
 
         <Button

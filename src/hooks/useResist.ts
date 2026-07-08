@@ -6,6 +6,7 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { usePlotRenderStore } from '@/store/plotRenderStore';
 import { useMapSceneStore } from '@/store/mapSceneStore';
 import { useCelebrationStore } from '@/store/celebrationStore';
+import { useBrickConfettiStore } from '@/store/brickConfettiStore';
 import { formatErrorForUser } from '@/utils/formatError';
 
 interface UseResistOptions {
@@ -30,6 +31,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
   const applyBatchUpdate = useMapSceneStore((s) => s.applyBatchUpdate);
   const scheduleSyncAfterPlacement = useMapSceneStore((s) => s.scheduleSyncAfterPlacement);
   const triggerCelebration = useCelebrationStore((s) => s.trigger);
+  const triggerBrickConfetti = useBrickConfettiStore((s) => s.triggerBrickConfetti);
 
   const onSceneUpdateRef = useRef(onSceneUpdate);
   onSceneUpdateRef.current = onSceneUpdate;
@@ -86,6 +88,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
           const brick = result.bricks[0];
           if (brick) {
             placedBricks.push(brick);
+            triggerBrickConfetti();
             const newBuildings = result.unlocks
               .map((u) => u.buildingInstance)
               .filter((b): b is BuildingInstance => b != null);
@@ -141,6 +144,7 @@ export function useResist({ categoryId, categoryType, onSceneUpdate }: UseResist
     applyBatchUpdate,
     scheduleSyncAfterPlacement,
     triggerCelebration,
+    triggerBrickConfetti,
     reportFailure,
   ]);
 
